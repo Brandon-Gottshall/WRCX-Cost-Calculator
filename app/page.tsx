@@ -27,7 +27,22 @@ import type {
   ChannelStatistics as ChannelStatsType,
   VodStatistics as VodStatsType,
 } from "@/lib/types"
-import { SimpleErrorBoundary } from "@/components/simple-error-boundary"
+import { AlertTriangle } from "lucide-react"
+
+// Simple error boundary component
+function ErrorFallback({ error, resetErrorBoundary }) {
+  return (
+    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+        <div>
+          <h3 className="font-medium text-red-800">Something went wrong</h3>
+          <p className="text-sm text-red-600 mt-1">{error.message || "Unknown error"}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -103,11 +118,12 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
+  const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
   // Calculate costs based on current settings
   const costs = calculateCosts(settings)
 
-  // Calculate revenue based on current settings - FIX: Pass the correct parameters
+  // Calculate revenue based on current settings
   const revenue = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
 
   // Validate settings
@@ -180,15 +196,28 @@ export default function Home() {
                   isEdited={isEdited}
                 />
 
-                <SimpleErrorBoundary
-                  fallback={
+                {/* Infrastructure recommendation with error handling */}
+                <div className="relative">
+                  {infrastructureError ? (
                     <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                      Error loading infrastructure recommendations
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                        <div>
+                          <h3 className="font-medium text-red-800">Error loading infrastructure recommendations</h3>
+                          <p className="text-sm text-red-600 mt-1">{infrastructureError.message}</p>
+                          <button
+                            onClick={() => setInfrastructureError(null)}
+                            className="mt-2 text-xs text-blue-600 hover:underline"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  }
-                >
-                  <InfrastructureRecommendation />
-                </SimpleErrorBoundary>
+                  ) : (
+                    <InfrastructureRecommendation />
+                  )}
+                </div>
 
                 <SettingsCard
                   title="Live → VOD"
