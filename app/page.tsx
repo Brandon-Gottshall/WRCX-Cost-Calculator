@@ -27,22 +27,6 @@ import type {
   ChannelStatistics as ChannelStatsType,
   VodStatistics as VodStatsType,
 } from "@/lib/types"
-import { AlertTriangle } from "lucide-react"
-
-// Simple error boundary component
-function ErrorFallback({ error, resetErrorBoundary }) {
-  return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-      <div className="flex items-start gap-2">
-        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-        <div>
-          <h3 className="font-medium text-red-800">Something went wrong</h3>
-          <p className="text-sm text-red-600 mt-1">{error.message || "Unknown error"}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -118,7 +102,6 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
-  const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
   // Calculate costs based on current settings
   const costs = calculateCosts(settings)
@@ -173,7 +156,6 @@ export default function Home() {
           <div className="lg:col-span-2 space-y-6">
             <PlatformPicker platform={settings.platform} onChange={handlePlatformChange} />
 
-            {/* Fix: Pass the correct props to SettingsTabs */}
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
             {activeTab === "live" && (
@@ -188,7 +170,6 @@ export default function Home() {
                   isEdited={isEdited}
                 />
 
-                {/* Fix: Pass the correct props to ChannelStatistics */}
                 <ChannelStatistics
                   channels={settings.channels || []}
                   updateChannels={updateChannels}
@@ -196,27 +177,8 @@ export default function Home() {
                   isEdited={isEdited}
                 />
 
-                {/* Infrastructure recommendation with error handling */}
                 <div className="relative">
-                  {infrastructureError ? (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                        <div>
-                          <h3 className="font-medium text-red-800">Error loading infrastructure recommendations</h3>
-                          <p className="text-sm text-red-600 mt-1">{infrastructureError.message}</p>
-                          <button
-                            onClick={() => setInfrastructureError(null)}
-                            className="mt-2 text-xs text-blue-600 hover:underline"
-                          >
-                            Try again
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <InfrastructureRecommendation />
-                  )}
+                  <InfrastructureRecommendation />
                 </div>
 
                 <SettingsCard
@@ -243,7 +205,6 @@ export default function Home() {
                   isEdited={isEdited}
                 />
 
-                {/* Fix: Pass the correct props to VodStatistics */}
                 <VodStatistics
                   vodCategories={settings.vodCategories || []}
                   updateVodCategories={updateVodCategories}
