@@ -944,10 +944,13 @@ function HardwareHostingSettings({
     if (!settings.recommendedHardware || settings.recommendedHardware !== hardwareRequirements.recommendedHardware) {
       updateSettings({
         recommendedHardware: hardwareRequirements.recommendedHardware,
-        serverType: hardwareRequirements.recommendedHardware
-          .toLowerCase()
-          .replace(/\s+$.+$/, "")
-          .replace(/\s+/g, "-"),
+        serverType:
+          hardwareRequirements.recommendedHardware && typeof hardwareRequirements.recommendedHardware === "string"
+            ? hardwareRequirements.recommendedHardware
+                .toLowerCase()
+                .replace(/\s+$.+$/, "")
+                .replace(/\s+/g, "-")
+            : "default-server",
         serverCost: hardwareRequirements.estimatedCost,
       })
     }

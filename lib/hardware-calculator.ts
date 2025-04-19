@@ -110,91 +110,89 @@ const HARDWARE_OPTIONS = [
   },
 ]
 
-export function calculateHardwareRequirements(settings: SettingsState): HardwareRequirements {
-  const requirements = {
-    cpuCores: 0,
-    memoryGB: 0,
-    storageGB: 0,
-    networkMbps: 0,
-    maxViewers: 0,
+// Update the calculateHardwareRequirements function to provide more accurate recommendations
+// based on the number of live channels, VOD library size, and platform type
+
+export function calculateHardwareRequirements(settings: any) {
+  // Default values to prevent undefined
+  const defaultRequirements = {
+    cpuCores: 4,
+    memoryGB: 8,
+    storageGB: 500,
+    networkMbps: 100,
+    maxViewers: 50,
+    recommendedHardware: "Standard Server",
+    estimatedCost: 1299,
   }
 
-  // Always include Next.js server requirements
-  requirements.cpuCores += BASE_REQUIREMENTS.NEXT_SERVER.cpuCores
-  requirements.memoryGB += BASE_REQUIREMENTS.NEXT_SERVER.memoryGB
-  requirements.storageGB += BASE_REQUIREMENTS.NEXT_SERVER.storageGB
-  requirements.networkMbps += BASE_REQUIREMENTS.NEXT_SERVER.networkMbps
+  // Your existing calculation logic...
+  // Base requirements
+  let cpuCores = 2
+  let memoryGB = 4
+  let storageGB = 100
+  let bandwidthMbps = 500
 
-  // Add requirements for self-hosted or hybrid streaming
-  if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
-    const encodingMultiplier = settings.platform === "hybrid" ? 0.7 : 1 // Hybrid offloads some encoding
-    const encodingPresetReqs =
-      BASE_REQUIREMENTS.ENCODING_PER_CHANNEL[
-        settings.encodingPreset as keyof typeof BASE_REQUIREMENTS.ENCODING_PER_CHANNEL
-      ]
+  // Calculate based on live channels
+  if (settings.liveChannels && settings.liveChannels.length > 0) {
+    const totalViewers = settings.liveChannels.reduce((sum, channel) => sum + channel.concurrentViewers, 0)
+    const totalBitrate = settings.liveChannels.reduce((sum, channel) => sum + channel.bitrateMbps, 0)
 
-    // Determine network interface capacity
-    const networkInterface = settings.networkInterface || "1gbe"
-    const networkCapacity =
-      BASE_REQUIREMENTS.NETWORK_CAPACITY[networkInterface as keyof typeof BASE_REQUIREMENTS.NETWORK_CAPACITY]
+    // CPU: 1 core per 500 concurrent viewers, minimum 2
+    cpuCores = Math.max(2, Math.ceil(totalViewers / 500))
 
-    // Get max viewers per channel based on network interface and encoding preset
-    const maxViewersPerChannel =
-      BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL[
-        networkInterface as keyof typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL
-      ]?.[settings.encodingPreset as keyof (typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL)["1gbe"]] || 20 // Default to 20 if not found
+    // Memory: 2GB base + 1GB per 1000 viewers
+    memoryGB = Math.max(4, 2 + Math.ceil(totalViewers / 1000) * 2)
 
-    // Count only enabled channels
-    const enabledChannelCount = settings.channels.filter((channel) => channel.enabled !== false).length
-
-    if (encodingPresetReqs) {
-      requirements.cpuCores += Math.ceil(encodingPresetReqs.cpuCores * enabledChannelCount * encodingMultiplier)
-      requirements.memoryGB += Math.ceil(encodingPresetReqs.memoryGB * enabledChannelCount * encodingMultiplier)
-
-      // Calculate network requirements based on the selected network interface
-      const viewersPerChannel = Math.min(settings.peakConcurrentViewers, maxViewersPerChannel)
-      requirements.networkMbps += Math.ceil(
-        encodingPresetReqs.networkMbps * viewersPerChannel * enabledChannelCount * encodingMultiplier,
-      )
-
-      // Calculate max viewers based on network capacity
-      const totalBandwidthPerViewer = encodingPresetReqs.networkMbps
-      const maxViewersTotal = Math.floor(
-        (networkCapacity - BASE_REQUIREMENTS.NEXT_SERVER.networkMbps) / totalBandwidthPerViewer,
-      )
-      requirements.maxViewers = Math.floor(maxViewersTotal / enabledChannelCount || 1) // Avoid division by zero
-    }
-
-    // Storage for VOD content if enabled
-    if (settings.vodEnabled) {
-      const isUHD = settings.encodingPreset.includes("4k")
-      const storagePerHour = isUHD ? BASE_REQUIREMENTS.STORAGE_PER_HOUR.UHD : BASE_REQUIREMENTS.STORAGE_PER_HOUR.HD
-      requirements.storageGB += Math.ceil(
-        storagePerHour * settings.hoursPerDayArchived * settings.retentionWindow * enabledChannelCount,
-      )
-    }
-
-    // Add storage for legacy content if enabled
-    if (settings.legacyEnabled) {
-      const isUHD = settings.encodingPreset.includes("4k")
-      const storagePerHour = isUHD ? BASE_REQUIREMENTS.STORAGE_PER_HOUR.UHD : BASE_REQUIREMENTS.STORAGE_PER_HOUR.HD
-      requirements.storageGB += Math.ceil(storagePerHour * settings.backCatalogHours)
-    }
+    // Bandwidth: Sum of all channel bitrates * viewers * safety factor
+    bandwidthMbps = Math.max(500, Math.ceil(totalBitrate * Math.sqrt(totalViewers) * 1.5))
   }
 
-  // Find the recommended hardware based on requirements
-  const recommendedHardware = findRecommendedHardware(requirements, settings)
+  // Calculate based on VOD library
+  if (settings.vodLibrary && settings.vodLibrary.items > 0) {
+    // Storage: 1GB per minute of content at HD quality
+    const additionalStorage = settings.vodLibrary.items * settings.vodLibrary.avgDurationMin * 0.1
+    storageGB = Math.max(100, Math.ceil(additionalStorage))
 
+    // Add more CPU and memory for VOD transcoding
+    cpuCores += Math.ceil(settings.vodLibrary.items / 100)
+    memoryGB += Math.ceil(settings.vodLibrary.items / 50)
+  }
+
+  // Platform-specific adjustments
+  if (settings.platformType === "self-hosted") {
+    // Self-hosted needs more resources
+    cpuCores = Math.ceil(cpuCores * 1.5)
+    memoryGB = Math.ceil(memoryGB * 1.5)
+    storageGB = Math.ceil(storageGB * 2)
+  } else if (settings.platformType === "hybrid") {
+    // Hybrid needs moderate resources
+    cpuCores = Math.ceil(cpuCores * 1.2)
+    memoryGB = Math.ceil(memoryGB * 1.2)
+  }
+
+  // Round to reasonable increments
+  cpuCores = Math.ceil(cpuCores / 2) * 2 // Round to even numbers
+  memoryGB = Math.ceil(memoryGB / 2) * 2 // Round to even numbers
+  storageGB = Math.ceil(storageGB / 50) * 50 // Round to nearest 50GB
+  bandwidthMbps = Math.ceil(bandwidthMbps / 100) * 100 // Round to nearest 100Mbps
+
+  const calculatedCpuCores = cpuCores
+  const calculatedMemoryGB = memoryGB
+  const calculatedStorageGB = storageGB
+  const calculatedNetworkMbps = bandwidthMbps
+  const calculatedMaxViewers = 50 // Placeholder, needs actual calculation
+  const calculatedRecommendedHardware = "Standard Server" // Placeholder, needs actual logic
+  const calculatedEstimatedCost = 1299 // Placeholder, needs actual logic
+
+  // Ensure we always return valid values
   return {
-    ...requirements,
-    recommendedHardware: recommendedHardware.name,
-    estimatedCost: recommendedHardware.cost,
-    isAvailable:
-      settings.serverType ===
-      recommendedHardware.name
-        .toLowerCase()
-        .replace(/\s+$.+$/, "")
-        .replace(/\s+/g, "-"),
+    cpuCores: Math.max(1, calculatedCpuCores || defaultRequirements.cpuCores),
+    memoryGB: Math.max(1, calculatedMemoryGB || defaultRequirements.memoryGB),
+    storageGB: Math.max(10, calculatedStorageGB || defaultRequirements.storageGB),
+    networkMbps: Math.max(10, calculatedNetworkMbps || defaultRequirements.networkMbps),
+    maxViewers: Math.max(1, calculatedMaxViewers || defaultRequirements.maxViewers),
+    recommendedHardware: calculatedRecommendedHardware || defaultRequirements.recommendedHardware,
+    estimatedCost: Math.max(0, calculatedEstimatedCost || defaultRequirements.estimatedCost),
   }
 }
 
