@@ -10,6 +10,9 @@ export interface ChannelStatistics {
   adSpotsPerHour: number
   cpmRate: number
   fillRate?: number // Added fill rate override for per-channel
+  liveHours: number // NEW: "Live Hours/Day" – hours of new live content broadcast each day
+  vodUniques: number // NEW: "Daily VOD Viewers" – unique on-demand viewers per day
+  vodWatchMin: number // NEW: "Avg VOD Watch Time (min)" – average minutes each watches VOD
 }
 
 export interface VodStatistics {
@@ -88,6 +91,20 @@ export interface SettingsState {
   internetColoMonthlyCost?: number
   monthlyRentalCost?: number
   networkSwitchCost?: number
+
+  // Global Settings
+  globalFillRate: number // "Global Fill Rate %" – fallback fill rate for all channels
+  powerRate: number // "Power $/kWh" – electricity cost per kilowatt-hour
+  cdnCostPerGB: number // "CDN $/GB" – egress cost per GB of streaming data
+  avgBitrateOverride?: number // "Avg Bitrate (Mbps)" – use this value instead of preset for self-host
+
+  // Hardware & Hosting Opex
+  capEx?: number // "Cap-ex $" – up-front cost of hardware (e.g. Mac Mini)
+  amortMonths?: number // "Amortisation (mo)" – over how many months to amortise cap-ex
+  wattage?: number // "Wattage (W)" – average power draw of your server
+  serverOpexMo: number // "Server $/mo" – amortised hardware cost per month
+  electricityOpexMo: number // "Electricity $/mo" – monthly power bill
+  internetOpexMo: number // "Internet $/mo" – business-class connection cost
 
   // Analytics
   viewerAnalytics: string

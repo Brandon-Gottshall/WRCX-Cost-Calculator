@@ -42,6 +42,7 @@ interface SettingsCardProps {
     | "analytics"
     | "self-hosted-config"
   validationResults: ValidationResult[]
+  isEdited?: (fieldPath: string) => boolean
 }
 
 export function SettingsCard({
@@ -51,6 +52,7 @@ export function SettingsCard({
   updateSettings,
   type,
   validationResults,
+  isEdited,
 }: SettingsCardProps) {
   // Simple fade animation without height changes
   const cardVariants = {
@@ -929,8 +931,9 @@ function HardwareHostingSettings({
   }
 
   // Calculate power cost
-  const calculatePowerCost = (kwhPerMonth: number, costPerKwh: number) => {
-    return kwhPerMonth * costPerKwh
+  const calculatePowerCost = (wattage: number, powerRate: number) => {
+    // Formula: Wattage × 24h × 30d × Power $/kWh ÷ 1000
+    return (wattage * 24 * 30 * powerRate) / 1000
   }
 
   // Update recommended hardware when requirements change
@@ -953,33 +956,33 @@ function HardwareHostingSettings({
     let hasUpdates = false
 
     if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
-      // Set default server cost if it's zero
-      if (!settings.serverCost) {
-        updates.serverCost = 800
+      // Set default cap-ex if it's zero
+      if (!settings.capEx) {
+        updates.capEx = 1299
         hasUpdates = true
       }
 
       // Set default amortization period if it's zero
-      if (!settings.amortizationMonths) {
-        updates.amortizationMonths = 24
+      if (!settings.amortMonths) {
+        updates.amortMonths = 36
         hasUpdates = true
       }
 
-      // Set default power consumption if it's zero
-      if (!settings.powerConsumptionKwh) {
-        updates.powerConsumptionKwh = 15
+      // Set default wattage if it's zero
+      if (!settings.wattage) {
+        updates.wattage = 25
         hasUpdates = true
       }
 
-      // Set default power cost if it's zero
-      if (!settings.powerCostPerKwh) {
-        updates.powerCostPerKwh = 0.144
+      // Set default power rate if it's zero
+      if (!settings.powerRate) {
+        updates.powerRate = 0.144
         hasUpdates = true
       }
 
-      // Set default internet/colo cost if it's zero
-      if (!settings.internetColoMonthlyCost) {
-        updates.internetColoMonthlyCost = 100
+      // Set default internet cost if it's zero
+      if (!settings.internetOpexMo) {
+        updates.internetOpexMo = 99
         hasUpdates = true
       }
 
@@ -995,22 +998,20 @@ function HardwareHostingSettings({
     }
   }, [
     settings.platform,
-    settings.serverCost,
-    settings.amortizationMonths,
-    settings.powerConsumptionKwh,
-    settings.powerCostPerKwh,
-    settings.internetColoMonthlyCost,
+    settings.capEx,
+    settings.amortMonths,
+    settings.wattage,
+    settings.powerRate,
+    settings.internetOpexMo,
     settings.hardwareMode,
     updateSettings,
   ])
 
   // Calculate total monthly hardware cost
   const totalMonthlyCost =
-    (hardwareMode === "own"
-      ? calculateAmortizedCost(settings.serverCost || 0, settings.amortizationMonths || 24)
-      : settings.monthlyRentalCost || 0) +
-    calculatePowerCost(settings.powerConsumptionKwh || 0, settings.powerCostPerKwh || 0) +
-    (settings.internetColoMonthlyCost || 0) +
+    (hardwareMode === "own" ? settings.serverOpexMo || 0 : settings.monthlyRentalCost || 0) +
+    (settings.electricityOpexMo || 0) +
+    (settings.internetOpexMo || 0) +
     (settings.networkSwitchNeeded
       ? calculateAmortizedCost(settings.networkSwitchCost || 200, settings.amortizationMonths || 24)
       : 0)
@@ -1100,62 +1101,75 @@ function HardwareHostingSettings({
         <>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <Label htmlFor="serverCost">Hardware Purchase Price ($)</Label>
-              <span className="text-sm font-mono">${settings.serverCost || 0}</span>
+              <Label htmlFor="capEx">Cap-ex $ (Hardware Cost)</Label>
+              <span className="text-sm font-mono">${settings.capEx || 0}</span>
             </div>
             <div className="flex items-center gap-4">
               <Slider
-                id="serverCost"
+                id="capEx"
                 min={0}
                 max={5000}
                 step={100}
-                value={[settings.serverCost || 800]}
-                onValueChange={(value) => updateSettings({ serverCost: value[0] })}
+                value={[settings.capEx || 1299]}
+                onValueChange={(value) => updateSettings({ capEx: value[0] })}
                 className="flex-1"
               />
               <Input
                 type="number"
                 min={0}
-                value={settings.serverCost || 800}
-                onChange={(e) => updateSettings({ serverCost: Number(e.target.value) || 0 })}
+                value={settings.capEx || 1299}
+                onChange={(e) => updateSettings({ capEx: Number(e.target.value) || 0 })}
                 className="w-24"
               />
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Cost of server hardware (Mac Mini: ~$800-1500, Mac Studio: ~$2000-4000)
+              Upfront purchase price of your streaming server
             </p>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between">
-              <Label htmlFor="amortizationMonths">Amortization Period (months)</Label>
-              <span className="text-sm font-mono">{settings.amortizationMonths || 24} months</span>
+              <Label htmlFor="amortMonths">Amortisation (mo)</Label>
+              <span className="text-sm font-mono">{settings.amortMonths || 36} months</span>
             </div>
             <div className="flex items-center gap-4">
               <Slider
-                id="amortizationMonths"
+                id="amortMonths"
                 min={12}
                 max={60}
                 step={6}
-                value={[settings.amortizationMonths || 24]}
-                onValueChange={(value) => updateSettings({ amortizationMonths: value[0] })}
+                value={[settings.amortMonths || 36]}
+                onValueChange={(value) => updateSettings({ amortMonths: value[0] })}
                 className="flex-1"
               />
               <Input
                 type="number"
                 min={1}
-                value={settings.amortizationMonths || 24}
-                onChange={(e) => updateSettings({ amortizationMonths: Number(e.target.value) || 24 })}
+                value={settings.amortMonths || 36}
+                onChange={(e) => updateSettings({ amortMonths: Number(e.target.value) || 36 })}
                 className="w-24"
               />
             </div>
             <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>Period over which to spread hardware costs</span>
-              <span className="font-mono">
-                ≈ {formatCurrency(calculateAmortizedCost(settings.serverCost || 0, settings.amortizationMonths || 24))}
-                /mo
-              </span>
+              <span>Number of months to spread cap-ex cost</span>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="serverOpexMo">Server Opex $/mo</Label>
+              <span className="text-sm font-mono">${settings.serverOpexMo || 0}</span>
+            </div>
+            <Input
+              id="serverOpexMo"
+              type="number"
+              min={0}
+              step={0.01}
+              value={settings.serverOpexMo || 0}
+              disabled
+              className="bg-slate-100 dark:bg-slate-800"
+            />
+            <p className="text-sm text-slate-500 dark:text-slate-400">Cap-ex ÷ Amortisation</p>
           </div>
         </>
       ) : (
@@ -1190,87 +1204,101 @@ function HardwareHostingSettings({
 
       <div className="space-y-2">
         <div className="flex justify-between">
-          <Label htmlFor="powerConsumptionKwh">Power Consumption (kWh/month)</Label>
-          <span className="text-sm font-mono">{settings.powerConsumptionKwh || 0} kWh</span>
+          <Label htmlFor="wattage">Wattage (W)</Label>
+          <span className="text-sm font-mono">{settings.wattage || 0} W</span>
         </div>
         <div className="flex items-center gap-4">
           <Slider
-            id="powerConsumptionKwh"
+            id="wattage"
             min={0}
             max={100}
             step={1}
-            value={[settings.powerConsumptionKwh || 15]}
-            onValueChange={(value) => updateSettings({ powerConsumptionKwh: value[0] })}
+            value={[settings.wattage || 25]}
+            onValueChange={(value) => updateSettings({ wattage: value[0] })}
             className="flex-1"
           />
           <Input
             type="number"
             min={0}
-            value={settings.powerConsumptionKwh || 15}
-            onChange={(e) => updateSettings({ powerConsumptionKwh: Number(e.target.value) || 0 })}
+            value={settings.wattage || 25}
+            onChange={(e) => updateSettings({ wattage: Number(e.target.value) || 0 })}
             className="w-24"
           />
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Mac Mini (~15 kWh/mo), Mac Studio (~25 kWh/mo)</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Average watts your server draws continuously (Mac Mini: ~25W, Mac Studio: ~45W)
+        </p>
       </div>
 
       <div className="space-y-2">
         <div className="flex justify-between">
-          <Label htmlFor="powerCostPerKwh">Power Cost ($/kWh)</Label>
-          <span className="text-sm font-mono">${settings.powerCostPerKwh || 0}</span>
+          <Label htmlFor="powerRate">Power $/kWh</Label>
+          <span className="text-sm font-mono">${settings.powerRate || 0}</span>
         </div>
         <div className="flex items-center gap-4">
           <Slider
-            id="powerCostPerKwh"
+            id="powerRate"
             min={0}
             max={0.5}
             step={0.01}
-            value={[settings.powerCostPerKwh || 0.144]}
-            onValueChange={(value) => updateSettings({ powerCostPerKwh: value[0] })}
+            value={[settings.powerRate || 0.144]}
+            onValueChange={(value) => updateSettings({ powerRate: value[0] })}
             className="flex-1"
           />
           <Input
             type="number"
             min={0}
             step={0.001}
-            value={settings.powerCostPerKwh || 0.144}
-            onChange={(e) => updateSettings({ powerCostPerKwh: Number(e.target.value) || 0 })}
+            value={settings.powerRate || 0.144}
+            onChange={(e) => updateSettings({ powerRate: Number(e.target.value) || 0 })}
             className="w-24"
           />
         </div>
-        <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-          <span>Average electricity cost in your area</span>
-          <span className="font-mono">
-            ≈ {formatCurrency(calculatePowerCost(settings.powerConsumptionKwh || 0, settings.powerCostPerKwh || 0))}/mo
-          </span>
-        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Cost you pay per kilowatt-hour of electricity</p>
       </div>
 
       <div className="space-y-2">
         <div className="flex justify-between">
-          <Label htmlFor="internetColoMonthlyCost">Internet/Colocation Monthly Cost ($)</Label>
-          <span className="text-sm font-mono">${settings.internetColoMonthlyCost || 0}</span>
+          <Label htmlFor="electricityOpexMo">Electricity $/mo</Label>
+          <span className="text-sm font-mono">${settings.electricityOpexMo || 0}</span>
+        </div>
+        <Input
+          id="electricityOpexMo"
+          type="number"
+          min={0}
+          step={0.01}
+          value={settings.electricityOpexMo || 0}
+          disabled
+          className="bg-slate-100 dark:bg-slate-800"
+        />
+        <p className="text-sm text-slate-500 dark:text-slate-400">Wattage × 24h × 30d × Power $/kWh ÷ 1000</p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <Label htmlFor="internetOpexMo">Internet $/mo</Label>
+          <span className="text-sm font-mono">${settings.internetOpexMo || 0}</span>
         </div>
         <div className="flex items-center gap-4">
           <Slider
-            id="internetColoMonthlyCost"
+            id="internetOpexMo"
             min={0}
             max={500}
             step={10}
-            value={[settings.internetColoMonthlyCost || 100]}
-            onValueChange={(value) => updateSettings({ internetColoMonthlyCost: value[0] })}
+            value={[settings.internetOpexMo || 99]}
+            onValueChange={(value) => updateSettings({ internetOpexMo: value[0] })}
             className="flex-1"
           />
           <Input
             type="number"
             min={0}
-            value={settings.internetColoMonthlyCost || 100}
-            onChange={(e) => updateSettings({ internetColoMonthlyCost: Number(e.target.value) || 0 })}
+            value={settings.internetOpexMo || 99}
+            onChange={(e) => updateSettings({ internetOpexMo: Number(e.target.value) || 0 })}
             className="w-24"
           />
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Business-class fiber (1 Gbps): $99-300/mo, Colocation: $70-150/mo
+          Monthly cost of your 1 Gbps or higher business line
         </p>
       </div>
 

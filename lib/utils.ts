@@ -1,4 +1,4 @@
-import { type ClassValue, clsx } from "clsx"
+import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -6,6 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: number): string {
+  // Handle NaN, undefined, or null values
+  if (value === undefined || value === null || isNaN(value)) {
+    return "$0.00"
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

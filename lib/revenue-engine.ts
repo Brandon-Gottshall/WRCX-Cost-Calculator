@@ -2,6 +2,14 @@ import type { RevenueState, ChannelStatistics, VodStatistics } from "@/lib/types
 import type { Costs } from "@/lib/types"
 import type { RevenueCalculations } from "@/lib/types"
 
+// Helper function to ensure numeric values and prevent NaN
+function ensureNumber(value: any, defaultValue = 0): number {
+  if (value === undefined || value === null || isNaN(Number(value))) {
+    return defaultValue
+  }
+  return Number(value)
+}
+
 export function calculateRevenue(
   revenueState: RevenueState,
   costs: Costs,
@@ -17,22 +25,25 @@ export function calculateRevenue(
       // Calculate per-channel revenue
       channels.forEach((channel) => {
         // Get channel-specific fill rate or use global default
-        const fillRate = channel.fillRate !== undefined ? channel.fillRate / 100 : revenueState.fillRate / 100
+        const fillRate =
+          channel.fillRate !== undefined
+            ? ensureNumber(channel.fillRate, 100) / 100
+            : ensureNumber(revenueState.fillRate, 100) / 100
 
         // Daily revenue = viewership * retention (hours) * ad spots per hour * fill rate * CPM / 1000
         const dailyRevenue =
-          (channel.viewership *
-            (channel.averageRetentionMinutes / 60) *
-            channel.adSpotsPerHour *
+          (ensureNumber(channel.viewership) *
+            (ensureNumber(channel.averageRetentionMinutes) / 60) *
+            ensureNumber(channel.adSpotsPerHour) *
             fillRate *
-            channel.cpmRate) /
+            ensureNumber(channel.cpmRate)) /
           1000
 
         // Apply multipliers if available
         const multiplier =
-          (revenueState.peakTimeMultiplier || 1) *
-          (revenueState.seasonalMultiplier || 1) *
-          (revenueState.targetDemographicValue || 1)
+          ensureNumber(revenueState.peakTimeMultiplier, 1) *
+          ensureNumber(revenueState.seasonalMultiplier, 1) *
+          ensureNumber(revenueState.targetDemographicValue, 1)
 
         // Monthly revenue (30 days) with multipliers
         const channelRevenue = dailyRevenue * 30 * multiplier
@@ -45,31 +56,32 @@ export function calculateRevenue(
       })
     } else {
       // Use the aggregate numbers if no channel breakdown is available
-      const fillRate = revenueState.fillRate / 100
+      const fillRate = ensureNumber(revenueState.fillRate, 100) / 100
 
       liveAdRevenue =
-        ((revenueState.averageDailyUniqueViewers *
-          revenueState.averageViewingHoursPerViewer *
-          revenueState.adSpotsPerHour *
+        ((ensureNumber(revenueState.averageDailyUniqueViewers) *
+          ensureNumber(revenueState.averageViewingHoursPerViewer) *
+          ensureNumber(revenueState.adSpotsPerHour) *
           fillRate *
-          revenueState.cpmRate) /
+          ensureNumber(revenueState.cpmRate)) /
           1000) *
         30 * // Assuming 30 days per month
-        (revenueState.peakTimeMultiplier || 1) *
-        (revenueState.seasonalMultiplier || 1) *
-        (revenueState.targetDemographicValue || 1)
+        ensureNumber(revenueState.peakTimeMultiplier, 1) *
+        ensureNumber(revenueState.seasonalMultiplier, 1) *
+        ensureNumber(revenueState.targetDemographicValue, 1)
     }
   }
 
   // Calculate Paid Programming Revenue
   let paidProgrammingRevenue = revenueState.paidProgrammingEnabled
-    ? revenueState.monthlyPaidBlocks * revenueState.ratePerBlock
+    ? ensureNumber(revenueState.monthlyPaidBlocks) * ensureNumber(revenueState.ratePerBlock)
     : 0
 
   // Add premium sponsorship revenue if enabled
   let premiumSponsorshipRevenue = 0
   if (revenueState.paidProgrammingEnabled && revenueState.premiumSponsorshipEnabled) {
-    premiumSponsorshipRevenue = (revenueState.premiumSponsorshipCount || 0) * (revenueState.premiumSponsorshipRate || 0)
+    premiumSponsorshipRevenue =
+      ensureNumber(revenueState.premiumSponsorshipCount) * ensureNumber(revenueState.premiumSponsorshipRate)
     paidProgrammingRevenue += premiumSponsorshipRevenue
   }
 
@@ -82,16 +94,23 @@ export function calculateRevenue(
       // Calculate per-category revenue
       vodCategories.forEach((category) => {
         // Get category-specific fill rate or use global default
-        const fillRate = category.fillRate !== undefined ? category.fillRate / 100 : revenueState.vodFillRate / 100
+        const fillRate =
+          category.fillRate !== undefined
+            ? ensureNumber(category.fillRate, 100) / 100
+            : ensureNumber(revenueState.vodFillRate, 100) / 100
 
         // Apply advanced factors if available
-        const skipFactor = 1 - (revenueState.vodSkipRate || 0)
-        const completionFactor = revenueState.vodCompletionRate || 1
-        const premiumFactor = 1 + (revenueState.vodPremiumPlacementRate || 0)
+        const skipFactor = 1 - ensureNumber(revenueState.vodSkipRate, 0)
+        const completionFactor = ensureNumber(revenueState.vodCompletionRate, 1)
+        const premiumFactor = 1 + ensureNumber(revenueState.vodPremiumPlacementRate, 0)
 
         // Monthly revenue = views * ad spots per view * fill rate * CPM / 1000 * factors
         const categoryRevenue =
-          ((category.monthlyViews * category.adSpotsPerView * fillRate * category.cpmRate) / 1000) *
+          ((ensureNumber(category.monthlyViews) *
+            ensureNumber(category.adSpotsPerView) *
+            fillRate *
+            ensureNumber(category.cpmRate)) /
+            1000) *
           skipFactor *
           completionFactor *
           premiumFactor
@@ -104,13 +123,17 @@ export function calculateRevenue(
       })
     } else {
       // Use the aggregate numbers if no category breakdown is available
-      const fillRate = revenueState.vodFillRate / 100
-      const skipFactor = 1 - (revenueState.vodSkipRate || 0)
-      const completionFactor = revenueState.vodCompletionRate || 1
-      const premiumFactor = 1 + (revenueState.vodPremiumPlacementRate || 0)
+      const fillRate = ensureNumber(revenueState.vodFillRate, 100) / 100
+      const skipFactor = 1 - ensureNumber(revenueState.vodSkipRate, 0)
+      const completionFactor = ensureNumber(revenueState.vodCompletionRate, 1)
+      const premiumFactor = 1 + ensureNumber(revenueState.vodPremiumPlacementRate, 0)
 
       vodAdRevenue =
-        ((revenueState.monthlyVodViews * revenueState.adSpotsPerVodView * fillRate * revenueState.vodCpmRate) / 1000) *
+        ((ensureNumber(revenueState.monthlyVodViews) *
+          ensureNumber(revenueState.adSpotsPerVodView) *
+          fillRate *
+          ensureNumber(revenueState.vodCpmRate)) /
+          1000) *
         skipFactor *
         completionFactor *
         premiumFactor
@@ -121,7 +144,11 @@ export function calculateRevenue(
   const totalRevenue = liveAdRevenue + paidProgrammingRevenue + vodAdRevenue
 
   // Calculate Net Operating Profit
-  const totalCost = costs.encoding + costs.storage + costs.delivery + costs.other
+  const totalCost =
+    ensureNumber(costs.encoding) +
+    ensureNumber(costs.storage) +
+    ensureNumber(costs.delivery) +
+    ensureNumber(costs.other)
   const netOperatingProfit = totalRevenue - totalCost
 
   return {

@@ -10,32 +10,40 @@ interface RevenueKPIsProps {
   revenue: RevenueCalculations
 }
 
+// Helper function to ensure numeric values and prevent NaN
+function ensureNumber(value: any, defaultValue = 0): number {
+  if (value === undefined || value === null || isNaN(Number(value))) {
+    return defaultValue
+  }
+  return Number(value)
+}
+
 export function RevenueKPIs({ revenue }: RevenueKPIsProps) {
   const kpis = [
     {
       title: "Live Ad Revenue",
-      value: revenue.liveAdRevenue,
+      value: ensureNumber(revenue.liveAdRevenue),
       icon: Tv2,
       color: "text-blue-500 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
     },
     {
       title: "Paid Programming",
-      value: revenue.paidProgrammingRevenue,
+      value: ensureNumber(revenue.paidProgrammingRevenue),
       icon: DollarSign,
       color: "text-purple-500 dark:text-purple-400",
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
     },
     {
       title: "VOD Ad Revenue",
-      value: revenue.vodAdRevenue,
+      value: ensureNumber(revenue.vodAdRevenue),
       icon: Film,
       color: "text-green-500 dark:text-green-400",
       bgColor: "bg-green-100 dark:bg-green-900/30",
     },
     {
       title: "Total Revenue",
-      value: revenue.totalRevenue,
+      value: ensureNumber(revenue.totalRevenue),
       icon: TrendingUp,
       color: "text-amber-500 dark:text-amber-400",
       bgColor: "bg-amber-100 dark:bg-amber-900/30",

@@ -8,13 +8,22 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import type { RevenueState } from "@/lib/types"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { InfoIcon as InfoCircle } from "lucide-react"
 
 interface RevenueSettingsProps {
   revenue: RevenueState
   updateRevenue: (revenue: Partial<RevenueState>) => void
+  globalFillRate: number
+  updateGlobalFillRate: (value: number) => void
 }
 
-export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps) {
+export function RevenueSettings({
+  revenue,
+  updateRevenue,
+  globalFillRate,
+  updateGlobalFillRate,
+}: RevenueSettingsProps) {
   return (
     <Card className="border-slate-200 dark:border-slate-800">
       <CardHeader className="bg-gradient-to-r from-slate-50 to-green-50 dark:from-slate-900 dark:to-green-900/30">
@@ -22,6 +31,37 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
         <CardDescription>Configure your revenue streams</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
+        {/* Global Fill Rate Section */}
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-900/30">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-medium">Global Fill Rate %</h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoCircle className="h-4 w-4 text-slate-500 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-[200px] text-xs">Default % of ad slots sold if a channel has no override.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <span className="text-sm font-mono">{globalFillRate}%</span>
+          </div>
+          <Slider
+            id="globalFillRate"
+            min={0}
+            max={100}
+            step={1}
+            value={[globalFillRate]}
+            onValueChange={(value) => updateGlobalFillRate(value[0])}
+          />
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+            This is the default fill rate used for channels that don't have a specific override.
+          </p>
+        </div>
+
         <Tabs defaultValue="live-ads" className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger value="live-ads">Live Ad Revenue</TabsTrigger>

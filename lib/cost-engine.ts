@@ -176,32 +176,37 @@ export function calculateCosts(settings: SettingsState): Costs {
 
   // Hardware costs
   if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
-    // Calculate hardware costs based on the mode
+    // Use the new hardware opex fields for cost calculation
     if (settings.hardwareMode === "own" || !settings.hardwareMode) {
-      // Amortize server cost
-      if (!settings.hardwareAvailable && settings.serverCost) {
-        const amortizationMonths = settings.amortizationMonths || 24
-        otherCost += (settings.serverCost * settings.serverCount) / amortizationMonths
-      }
-
-      // Add network switch cost if needed
-      if (settings.networkSwitchNeeded && settings.networkSwitchCost) {
-        const amortizationMonths = settings.amortizationMonths || 24
-        otherCost += settings.networkSwitchCost / amortizationMonths
+      // Use serverOpexMo directly if available
+      if (settings.serverOpexMo) {
+        otherCost += settings.serverOpexMo * settings.serverCount
+      } else if (settings.capEx && settings.amortMonths && settings.amortMonths > 0) {
+        // Calculate from capEx and amortMonths if serverOpexMo is not available
+        otherCost += (settings.capEx / settings.amortMonths) * settings.serverCount
       }
     } else if (settings.hardwareMode === "rent") {
       // Add monthly rental cost
       otherCost += settings.monthlyRentalCost || 0
     }
 
-    // Add power costs
-    if (settings.powerConsumptionKwh && settings.powerCostPerKwh) {
-      otherCost += settings.powerConsumptionKwh * settings.powerCostPerKwh
+    // Add electricity costs
+    if (settings.electricityOpexMo) {
+      otherCost += settings.electricityOpexMo * settings.serverCount
+    } else if (settings.wattage && settings.powerRate) {
+      // Calculate from wattage and powerRate if electricityOpexMo is not available
+      otherCost += ((settings.wattage * 24 * 30 * settings.powerRate) / 1000) * settings.serverCount
     }
 
     // Add internet/colocation costs
-    if (settings.internetColoMonthlyCost) {
-      otherCost += settings.internetColoMonthlyCost
+    if (settings.internetOpexMo) {
+      otherCost += settings.internetOpexMo
+    }
+
+    // Add network switch cost if needed
+    if (settings.networkSwitchNeeded && settings.networkSwitchCost) {
+      const amortizationMonths = settings.amortMonths || settings.amortizationMonths || 24
+      otherCost += settings.networkSwitchCost / amortizationMonths
     }
   }
 

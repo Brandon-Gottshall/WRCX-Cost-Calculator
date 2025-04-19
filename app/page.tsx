@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AnimatePresence } from "framer-motion"
-import { Download, RefreshCw, Copy, AlertTriangle } from "lucide-react"
+import { Download, RefreshCw, Copy, AlertTriangle, HelpCircle } from "lucide-react"
 import { calculateCosts } from "@/lib/cost-engine"
 import { validateSettings, hasValidationErrors } from "@/lib/validation"
 import { PlatformPicker } from "@/components/platform-picker"
@@ -12,7 +12,9 @@ import { SettingsTabs } from "@/components/settings-tabs"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ValidationAlert } from "@/components/validation-alert"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { SettingsState, Tab } from "@/lib/types"
+import { initializeStore, saveStore } from "@/lib/store-init"
 
 // Add these imports at the top with the other imports
 import { calculateRevenue } from "@/lib/revenue-engine"
@@ -24,8 +26,8 @@ import { ChannelStatisticsManager } from "@/components/channel-statistics"
 import { VodStatisticsManager } from "@/components/vod-statistics"
 
 export default function CostCalculator() {
-  // Update the initial state in the useState hook to include the new fields
-  const [settings, setSettings] = useState<SettingsState>({
+  // Initial default state
+  const defaultState: SettingsState = {
     platform: "mux",
     streamEnabled: true, // Initialize to true
     channelCount: 1,
@@ -33,17 +35,8 @@ export default function CostCalculator() {
     encodingPreset: "1080p-tri-ladder",
     liveDvrEnabled: true,
     recordingStorageLocation: "same-as-vod",
-    // Add channel statistics
-    channels: [
-      {
-        id: "channel-1",
-        name: "Main Channel",
-        viewership: 1000,
-        averageRetentionMinutes: 45,
-        adSpotsPerHour: 4,
-        cpmRate: 15,
-      },
-    ],
+    // Add channel statistics - will be overridden by defaultChannels
+    channels: [],
     vodEnabled: true,
     vodProvider: "same-as-live",
     hoursPerDayArchived: 24,
@@ -90,10 +83,21 @@ export default function CostCalculator() {
     internetColoMonthlyCost: 100,
     networkSwitchNeeded: false,
     networkSwitchCost: 200,
+    // Global Settings - will be overridden by globalDefaults
+    globalFillRate: 35,
+    powerRate: 0.144,
+    cdnCostPerGB: 0.03,
+    // Hardware & Hosting Opex - will be overridden by globalDefaults
+    capEx: 1299,
+    amortMonths: 36,
+    wattage: 25,
+    serverOpexMo: 36.08,
+    electricityOpexMo: 2.59,
+    internetOpexMo: 99,
     // Self-hosted defaults
     networkInterface: "1gbe",
     nicCost: 300,
-    enterpriseNetworkCost: 5000,
+    enterpriseNetworkCost: "5000",
     bandwidthCapacity: 1000,
     streamingServer: "mediamtx",
     transcodingEngine: "hardware",
@@ -102,49 +106,75 @@ export default function CostCalculator() {
     cloudProvider: "cloudflare",
     originEgressCost: 0.09,
     hybridRedundancyMode: "active-passive",
-    // Add revenue settings with default values and new fields
+    // Add revenue settings - will be overridden by globalDefaults
     revenue: {
       liveAdsEnabled: true,
       averageDailyUniqueViewers: 1000,
       averageViewingHoursPerViewer: 2,
       adSpotsPerHour: 4,
       cpmRate: 15,
-
-      // Advanced revenue controls
+      fillRate: 35,
       peakTimeMultiplier: 1.2,
       seasonalMultiplier: 1.0,
       targetDemographicValue: 1.1,
-
       paidProgrammingEnabled: true,
       monthlyPaidBlocks: 4,
       ratePerBlock: 250,
-
-      // Premium tier options
       premiumSponsorshipEnabled: false,
       premiumSponsorshipRate: 500,
       premiumSponsorshipCount: 0,
-
       vodAdsEnabled: true,
       monthlyVodViews: 5000,
       adSpotsPerVodView: 1,
       vodCpmRate: 20,
-
-      // VOD advanced options
+      vodFillRate: 35,
       vodSkipRate: 0.15,
       vodCompletionRate: 0.85,
       vodPremiumPlacementRate: 0.05,
     },
-  })
+  }
+
+  // Initialize state with defaults or saved values
+  const [settings, setSettings] = useState<SettingsState>(() => initializeStore(defaultState))
+
+  // Track which fields have been edited by the user
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
   const [validationResults, setValidationResults] = useState(validateSettings ? validateSettings(settings) : [])
   const [showDetailedBreakdown, setShowDetailedBreakdown] = useState(false)
+
+  // Calculate derived values whenever relevant inputs change
+  useEffect(() => {
+    const updates: Partial<SettingsState> = {}
+
+    // Calculate serverOpexMo if capEx and amortMonths are set
+    if (settings.capEx !== undefined && settings.amortMonths !== undefined && settings.amortMonths > 0) {
+      updates.serverOpexMo = Number((settings.capEx / settings.amortMonths).toFixed(2))
+    }
+
+    // Calculate electricityOpexMo if wattage and powerRate are set
+    if (settings.wattage !== undefined && settings.powerRate !== undefined) {
+      // Formula: Wattage × 24h × 30d × Power $/kWh ÷ 1000
+      updates.electricityOpexMo = Number(((settings.wattage * 24 * 30 * settings.powerRate) / 1000).toFixed(2))
+    }
+
+    // Only update if there are changes
+    if (Object.keys(updates).length > 0) {
+      setSettings((prev) => ({ ...prev, ...updates }))
+    }
+  }, [settings.capEx, settings.amortMonths, settings.wattage, settings.powerRate])
 
   // Validate settings whenever they change
   useEffect(() => {
     if (validateSettings) {
       setValidationResults(validateSettings(settings))
     }
+  }, [settings])
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    saveStore(settings)
   }, [settings])
 
   const costs = calculateCosts(settings)
@@ -154,108 +184,25 @@ export default function CostCalculator() {
   const revenueCalculations = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
 
   const updateSettings = (newSettings: Partial<SettingsState>) => {
+    // Track which fields are being edited
+    const newEditedFields = new Set(editedFields)
+    Object.keys(newSettings).forEach((key) => {
+      newEditedFields.add(key)
+    })
+    setEditedFields(newEditedFields)
+
     setSettings((prev) => ({ ...prev, ...newSettings }))
+  }
+
+  // Check if a field has been edited by the user
+  const isFieldEdited = (fieldPath: string): boolean => {
+    return editedFields.has(fieldPath)
   }
 
   // Update the resetSettings function to include the new fields
   const resetSettings = () => {
-    setSettings({
-      platform: "mux",
-      streamEnabled: true, // Initialize to true
-      channelCount: 1,
-      peakConcurrentViewers: 100,
-      encodingPreset: "1080p-tri-ladder",
-      liveDvrEnabled: true,
-      recordingStorageLocation: "same-as-vod",
-      // Add channel statistics
-      channels: [
-        {
-          id: "channel-1",
-          name: "Main Channel",
-          viewership: 1000,
-          averageRetentionMinutes: 45,
-          adSpotsPerHour: 4,
-          cpmRate: 15,
-        },
-      ],
-      vodEnabled: true,
-      vodProvider: "same-as-live",
-      hoursPerDayArchived: 24,
-      retentionWindow: 30,
-      deliveryRegion: "us",
-      peakConcurrentVodViewers: 50,
-      // Add VOD categories
-      vodCategories: [
-        {
-          id: "vod-1",
-          name: "News Archives",
-          monthlyViews: 5000,
-          averageWatchTimeMinutes: 20,
-          adSpotsPerView: 1,
-          cpmRate: 20,
-        },
-      ],
-      legacyEnabled: false,
-      backCatalogHours: 0,
-      legacyProvider: "same-as-vod",
-      preEncoded: false,
-      dataStore: "local-sqlite",
-      dbBackupRetention: 7,
-      videoStorageStrategy: "local-nas",
-      outboundEmail: false,
-      monthlyEmailVolume: 0,
-      cdnPlan: "free",
-      cdnEgressRate: 0.085,
-      macMiniNeeded: false,
-      networkSwitchNeeded: false,
-      rackHostingLocation: "in-station",
-      rackCost: 0,
-      viewerAnalytics: "none",
-      siteAnalytics: "none",
-      // Hardware defaults
-      serverType: "mac-mini",
-      serverCount: 1,
-      serverCost: 800,
-      hardwareAvailable: false,
-      hardwareMode: "own",
-      amortizationMonths: 24,
-      powerConsumptionKwh: 15,
-      powerCostPerKwh: 0.144,
-      internetColoMonthlyCost: 100,
-      networkSwitchNeeded: false,
-      networkSwitchCost: 200,
-      revenue: {
-        liveAdsEnabled: true,
-        averageDailyUniqueViewers: 1000,
-        averageViewingHoursPerViewer: 2,
-        adSpotsPerHour: 4,
-        cpmRate: 15,
-
-        // Advanced revenue controls
-        peakTimeMultiplier: 1.2,
-        seasonalMultiplier: 1.0,
-        targetDemographicValue: 1.1,
-
-        paidProgrammingEnabled: true,
-        monthlyPaidBlocks: 4,
-        ratePerBlock: 250,
-
-        // Premium tier options
-        premiumSponsorshipEnabled: false,
-        premiumSponsorshipRate: 500,
-        premiumSponsorshipCount: 0,
-
-        vodAdsEnabled: true,
-        monthlyVodViews: 5000,
-        adSpotsPerVodView: 1,
-        vodCpmRate: 20,
-
-        // VOD advanced options
-        vodSkipRate: 0.15,
-        vodCompletionRate: 0.85,
-        vodPremiumPlacementRate: 0.05,
-      },
-    })
+    setSettings(initializeStore(defaultState))
+    setEditedFields(new Set())
     setActiveTab("live")
   }
 
@@ -309,6 +256,7 @@ export default function CostCalculator() {
               onChange={(platform) => updateSettings({ platform })}
               settings={settings}
               updateSettings={updateSettings}
+              isEdited={isFieldEdited}
             />
 
             {/* Display validation alerts */}
@@ -329,6 +277,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="stream"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -339,6 +288,8 @@ export default function CostCalculator() {
                     key="channel-statistics"
                     channels={settings.channels}
                     updateChannels={(channels) => updateSettings({ channels })}
+                    isEdited={isFieldEdited}
+                    defaultFillRate={settings.globalFillRate}
                   />
                 )}
 
@@ -351,6 +302,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="live-to-vod"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -360,6 +312,7 @@ export default function CostCalculator() {
                     key="vod-statistics"
                     vodCategories={settings.vodCategories}
                     updateVodCategories={(vodCategories) => updateSettings({ vodCategories })}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -372,6 +325,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="legacy-vod"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -384,6 +338,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="storage-db"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -396,6 +351,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="email"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -408,6 +364,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="cdn"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -420,6 +377,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="hardware-hosting"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
 
@@ -432,6 +390,7 @@ export default function CostCalculator() {
                     updateSettings={updateSettings}
                     type="analytics"
                     validationResults={validationResults || []}
+                    isEdited={isFieldEdited}
                   />
                 )}
                 {activeTab === "revenue" && (
@@ -444,6 +403,9 @@ export default function CostCalculator() {
                         revenue: { ...prev.revenue, ...revenueUpdate },
                       }))
                     }
+                    globalFillRate={settings.globalFillRate}
+                    updateGlobalFillRate={(value) => updateSettings({ globalFillRate: value })}
+                    isEdited={isFieldEdited}
                   />
                 )}
               </AnimatePresence>
@@ -479,6 +441,24 @@ export default function CostCalculator() {
               <RevenueVsCost revenue={revenueCalculations} costs={costs} />
             </div>
           </div>
+        </div>
+
+        {/* Research footnote */}
+        <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger className="flex items-center gap-1 mx-auto">
+                <HelpCircle size={14} />
+                <span className="underline">Why these defaults?</span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>
+                  Default values are based on April 2025 research summary of typical local TV station streaming
+                  operations.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </main>
 

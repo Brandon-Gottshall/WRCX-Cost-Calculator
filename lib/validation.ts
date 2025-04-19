@@ -138,6 +138,43 @@ export const validationRules: ValidationRule[] = [
     condition: (settings) => settings.rackHostingLocation === "colo",
   },
 
+  // Hardware & Hosting Opex
+  {
+    field: "capEx",
+    min: 0,
+    max: 10000,
+    message: "Cap-ex should be between $0 and $10,000",
+    severity: "error",
+    condition: (settings) =>
+      (settings.platform === "self-hosted" || settings.platform === "hybrid") && settings.hardwareMode === "own",
+  },
+  {
+    field: "amortMonths",
+    min: 1,
+    max: 120,
+    integer: true,
+    message: "Amortisation months should be between 1 and 120",
+    severity: "error",
+    condition: (settings) =>
+      (settings.platform === "self-hosted" || settings.platform === "hybrid") && settings.hardwareMode === "own",
+  },
+  {
+    field: "wattage",
+    min: 0,
+    max: 1000,
+    message: "Wattage should be between 0 and 1000",
+    severity: "error",
+    condition: (settings) => settings.platform === "self-hosted" || settings.platform === "hybrid",
+  },
+  {
+    field: "internetOpexMo",
+    min: 0,
+    max: 2000,
+    message: "Internet monthly cost should be between $0 and $2,000",
+    severity: "error",
+    condition: (settings) => settings.platform === "self-hosted" || settings.platform === "hybrid",
+  },
+
   // CDN
   {
     field: "cdnEgressRate",
@@ -198,6 +235,10 @@ export const validationRules: ValidationRule[] = [
       return settings.bandwidthCapacity < estimatedBandwidth
     },
   },
+
+  // Channel Statistics Validation
+  // These rules will be applied to each channel in the channels array
+  // We'll need to handle this separately in the validation function
 ]
 
 // Validation result interface
@@ -205,12 +246,14 @@ export interface ValidationResult {
   field: keyof SettingsState
   message: string
   severity: "warning" | "error"
+  channelId?: string // For channel-specific validations
 }
 
 // Validate settings against rules
 export function validateSettings(settings: SettingsState): ValidationResult[] {
   const results: ValidationResult[] = []
 
+  // Standard field validation
   for (const rule of validationRules) {
     // Skip rule if condition is not met
     if (rule.condition && !rule.condition(settings)) continue
@@ -247,6 +290,51 @@ export function validateSettings(settings: SettingsState): ValidationResult[] {
     }
   }
 
+  // Channel-specific validations
+  if (settings.channels) {
+    for (const channel of settings.channels) {
+      // Validate liveHours
+      if (channel.liveHours < 0 || channel.liveHours > 24) {
+        results.push({
+          field: "channels" as keyof SettingsState,
+          message: `Channel "${channel.name}": Live hours should be between 0 and 24`,
+          severity: "error",
+          channelId: channel.id,
+        })
+      }
+
+      // Validate fillRate
+      if (channel.fillRate !== undefined && (channel.fillRate < 0 || channel.fillRate > 100)) {
+        results.push({
+          field: "channels" as keyof SettingsState,
+          message: `Channel "${channel.name}": Fill rate should be between 0 and 100%`,
+          severity: "error",
+          channelId: channel.id,
+        })
+      }
+
+      // Validate vodUniques
+      if (channel.vodUniques < 0) {
+        results.push({
+          field: "channels" as keyof SettingsState,
+          message: `Channel "${channel.name}": VOD viewers should be a positive number`,
+          severity: "error",
+          channelId: channel.id,
+        })
+      }
+
+      // Validate vodWatchMin
+      if (channel.vodWatchMin < 0) {
+        results.push({
+          field: "channels" as keyof SettingsState,
+          message: `Channel "${channel.name}": VOD watch time should be a positive number`,
+          severity: "error",
+          channelId: channel.id,
+        })
+      }
+    }
+  }
+
   return results
 }
 
@@ -254,7 +342,11 @@ export function validateSettings(settings: SettingsState): ValidationResult[] {
 export function getFieldValidation(
   field: keyof SettingsState,
   validationResults: ValidationResult[],
+  channelId?: string,
 ): ValidationResult | undefined {
+  if (channelId) {
+    return validationResults.find((result) => result.field === field && result.channelId === channelId)
+  }
   return validationResults.find((result) => result.field === field)
 }
 
