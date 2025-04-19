@@ -6,7 +6,7 @@ import { CostBreakdown } from "@/components/cost-breakdown"
 import { CostPreview } from "@/components/cost-preview"
 import { PlatformPicker } from "@/components/platform-picker"
 import { ChannelStatisticsManager as ChannelStatistics } from "@/components/channel-statistics"
-import { VodStatistics } from "@/components/vod-statistics"
+import { VodStatisticsManager as VodStatistics } from "@/components/vod-statistics"
 import { RevenueSettings } from "@/components/revenue-settings"
 import { RevenueKPIs as RevenueKpis } from "@/components/revenue-kpis"
 import { RevenueVsCost } from "@/components/revenue-vs-cost"
@@ -20,8 +20,14 @@ import { initializeStore, saveStore } from "@/lib/store-init"
 import { calculateCosts } from "@/lib/cost-engine"
 import { calculateRevenue } from "@/lib/revenue-engine"
 import { validateSettings } from "@/lib/validation"
-import type { SettingsState, Tab, Platform } from "@/lib/types"
-import { ErrorBoundary } from "react-error-boundary"
+import type {
+  SettingsState,
+  Tab,
+  Platform,
+  ChannelStatistics as ChannelStatsType,
+  VodStatistics as VodStatsType,
+} from "@/lib/types"
+import { SimpleErrorBoundary } from "@/components/simple-error-boundary"
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -132,12 +138,12 @@ export default function Home() {
   }
 
   // Add a function to update channels
-  const updateChannels = (channels) => {
+  const updateChannels = (channels: ChannelStatsType[]) => {
     updateSettings({ channels })
   }
 
   // Add a function to update VOD categories
-  const updateVodCategories = (vodCategories) => {
+  const updateVodCategories = (vodCategories: VodStatsType[]) => {
     updateSettings({ vodCategories })
   }
 
@@ -174,7 +180,7 @@ export default function Home() {
                   isEdited={isEdited}
                 />
 
-                <ErrorBoundary
+                <SimpleErrorBoundary
                   fallback={
                     <div className="p-4 bg-red-50 border border-red-200 rounded-md">
                       Error loading infrastructure recommendations
@@ -182,7 +188,7 @@ export default function Home() {
                   }
                 >
                   <InfrastructureRecommendation />
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
 
                 <SettingsCard
                   title="Live → VOD"

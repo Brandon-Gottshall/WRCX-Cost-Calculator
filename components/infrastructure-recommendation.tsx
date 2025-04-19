@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Cpu, HardDrive, Network, MemoryStickIcon as Memory, Settings, Info } from "lucide-react"
+import { ChevronDown, Cpu, HardDrive, Network, MemoryStick, Settings, Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useInfrastructure } from "@/lib/store-init"
 
@@ -95,7 +95,7 @@ export function InfrastructureRecommendation() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <Memory className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <MemoryStick className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                     <span className="font-medium">Memory</span>
                   </div>
                   <span className="font-semibold">{hardwareSettings.memoryGB} GB</span>
@@ -295,7 +295,7 @@ export function InfrastructureRecommendation() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <Memory className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <MemoryStick className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                     <span className="font-medium">Memory</span>
                   </div>
                   <span className="font-semibold">{hardwareSettings.memoryGB} GB</span>
