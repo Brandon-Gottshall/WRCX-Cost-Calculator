@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { Costs, SettingsState, Platform, RevenueCalculations } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Shimmer } from "@/components/ui/shimmer"
+import { AnimatedNumber } from "@/components/ui/animated-number"
 
 // Add this helper function at the top of the file, before the CostPreview component
 function getPricingAssumptions(platform: Platform) {
@@ -68,6 +70,7 @@ interface CostPreviewProps {
   costs: Costs
   settings: SettingsState
   revenue?: RevenueCalculations
+  isCalculating?: boolean
 }
 
 // Helper function to get the platform name
@@ -100,7 +103,7 @@ function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
 }
 
 // Now modify the CostPreview component to include the pricing assumptions in the detailed view
-export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
+export function CostPreview({ costs, settings, revenue, isCalculating = false }: CostPreviewProps) {
   const [showDetailView, setShowDetailView] = useState(false)
   const totalMonthlyCost = costs.encoding + costs.storage + costs.delivery + costs.other
 
@@ -142,7 +145,12 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
   const totalLiveHoursPerDay = calculateTotalLiveHoursPerDay(settings)
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden sticky top-4">
+      {isCalculating && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-10">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+      )}
       <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30 flex flex-row items-center justify-between">
         <div>
           <CardTitle>Cost Preview</CardTitle>
@@ -172,15 +180,9 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                     <span className="text-sm font-medium">{item.name}</span>
                   </div>
                   <AnimatePresence mode="popLayout">
-                    <motion.div
-                      key={item.value}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      className="text-sm font-mono tabular-nums"
-                    >
-                      {formatCurrency(item.value)}
-                    </motion.div>
+                    <Shimmer active={isCalculating} className="inline-block">
+                      <AnimatedNumber value={item.value} className="text-sm font-mono tabular-nums" />
+                    </Shimmer>
                   </AnimatePresence>
                 </motion.div>
               ))}
@@ -190,15 +192,9 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
               <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold">Total Monthly</span>
                 <AnimatePresence mode="popLayout">
-                  <motion.div
-                    key={totalMonthlyCost}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="text-lg font-bold font-mono tabular-nums"
-                  >
-                    {formatCurrency(totalMonthlyCost)}
-                  </motion.div>
+                  <Shimmer active={isCalculating} className="inline-block">
+                    <AnimatedNumber value={totalMonthlyCost} className="text-lg font-bold font-mono tabular-nums" />
+                  </Shimmer>
                 </AnimatePresence>
               </div>
             </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { AnimatePresence } from "framer-motion"
 import {
   BarChart3,
   TrendingUp,
@@ -22,11 +22,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import type { Costs, SettingsState, Platform } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
 import { CitationLink, FormulaExplanation } from "@/components/citations"
+import { Shimmer } from "@/components/ui/shimmer"
+import { AnimatedNumber } from "@/components/ui/animated-number"
 
 interface CostBreakdownProps {
   costs: Costs
   settings: SettingsState
   validationErrors?: boolean
+  isCalculating?: boolean
 }
 
 // Helper function to calculate total live hours per day across all enabled channels
@@ -42,7 +45,7 @@ function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
     .reduce((total, channel) => total + (channel.liveHours || 0), 0)
 }
 
-export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdownProps) {
+export function CostBreakdown({ costs, settings, validationErrors, isCalculating = false }: CostBreakdownProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     encoding: false,
     storage: false,
@@ -100,7 +103,12 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
   ]
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
+    <Card className="border-slate-200 dark:border-slate-800 overflow-hidden sticky top-4 mt-6">
+      {isCalculating && (
+        <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center z-10">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+        </div>
+      )}
       <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30 flex flex-row items-center justify-between">
         <div>
           <CardTitle>Cost Breakdown</CardTitle>
@@ -143,15 +151,9 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
                   </div>
                   <div className="flex items-center gap-3">
                     <AnimatePresence mode="popLayout">
-                      <motion.div
-                        key={item.value}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        className="text-sm font-mono tabular-nums"
-                      >
-                        {formatCurrency(item.value)}
-                      </motion.div>
+                      <Shimmer active={isCalculating} className="inline-block">
+                        <AnimatedNumber value={item.value} className="text-sm font-mono tabular-nums" />
+                      </Shimmer>
                     </AnimatePresence>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -277,15 +279,9 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold">Total Monthly</span>
               <AnimatePresence mode="popLayout">
-                <motion.div
-                  key={totalMonthlyCost}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="text-lg font-bold font-mono tabular-nums"
-                >
-                  {formatCurrency(totalMonthlyCost)}
-                </motion.div>
+                <Shimmer active={isCalculating} className="inline-block">
+                  <AnimatedNumber value={totalMonthlyCost} className="text-lg font-bold font-mono tabular-nums" />
+                </Shimmer>
               </AnimatePresence>
             </div>
           </div>

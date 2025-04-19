@@ -15,13 +15,13 @@ import ValidatedAssumptions from "@/components/validated-assumptions"
 import { CitationsList as Citations } from "@/components/citations"
 import { InfrastructureProvider } from "@/lib/store-init"
 import { initializeStore, saveStore } from "@/lib/store-init"
-import { calculateCosts } from "@/lib/cost-engine"
-import { calculateRevenue } from "@/lib/revenue-engine"
 import { validateSettings } from "@/lib/validation"
 import { LiveChannels } from "@/components/live-channels" // Import the new unified component
 import type { SettingsState, Tab, Platform, VodStatistics as VodStatsType, RevenueState } from "@/lib/types"
 import { Info } from "lucide-react"
 import { UnifiedHardwareRecommendations } from "@/components/unified-hardware-recommendations"
+import { useDebouncedCalculation } from "@/hooks/use-debounced-calculation"
+import { StickyCostContainer } from "@/components/sticky-cost-container"
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -100,10 +100,12 @@ export default function Home() {
   const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
   // Calculate costs based on current settings
-  const costs = calculateCosts(settings)
-
+  // const costs = calculateCosts(settings)
   // Calculate revenue based on current settings
-  const revenue = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
+  // const revenue = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
+
+  // Use debounced calculations instead
+  const { costs, revenue, isCalculating } = useDebouncedCalculation(settings)
 
   // Validate settings
   const validationResults = validateSettings(settings)
@@ -330,8 +332,10 @@ export default function Home() {
             )}
 
             {/* Cost Preview */}
-            <CostPreview costs={costs} settings={settings} revenue={revenue} />
-            <CostBreakdown costs={costs} settings={settings} />
+            <StickyCostContainer>
+              <CostPreview costs={costs} settings={settings} revenue={revenue} isCalculating={isCalculating} />
+              <CostBreakdown costs={costs} settings={settings} isCalculating={isCalculating} />
+            </StickyCostContainer>
           </div>
         </div>
       </main>
