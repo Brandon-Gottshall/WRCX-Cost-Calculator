@@ -1,495 +1,316 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { AnimatePresence } from "framer-motion"
-import { Download, RefreshCw, Copy, AlertTriangle, HelpCircle } from "lucide-react"
-import { calculateCosts } from "@/lib/cost-engine"
-import { validateSettings, hasValidationErrors } from "@/lib/validation"
-import { PlatformPicker } from "@/components/platform-picker"
+import { useState } from "react"
 import { SettingsCard } from "@/components/settings-card"
+import { CostBreakdown } from "@/components/cost-breakdown"
 import { CostPreview } from "@/components/cost-preview"
-import { SettingsTabs } from "@/components/settings-tabs"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { ValidationAlert } from "@/components/validation-alert"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { SettingsState, Tab } from "@/lib/types"
-import { initializeStore, saveStore, InfrastructureProvider } from "@/lib/store-init"
-
-// Add these imports at the top with the other imports
-import { calculateRevenue } from "@/lib/revenue-engine"
+import { PlatformPicker } from "@/components/platform-picker"
+import { ChannelStatisticsManager as ChannelStatistics } from "@/components/channel-statistics"
+import { VodStatistics } from "@/components/vod-statistics"
 import { RevenueSettings } from "@/components/revenue-settings"
-import { RevenueKPIs } from "@/components/revenue-kpis"
+import { RevenueKPIs as RevenueKpis } from "@/components/revenue-kpis"
 import { RevenueVsCost } from "@/components/revenue-vs-cost"
-// Add these imports at the top with the other imports
-import { ChannelStatisticsManager } from "@/components/channel-statistics"
-import { VodStatisticsManager } from "@/components/vod-statistics"
-// New import for the infrastructure recommendation component
+import { SettingsTabs } from "@/components/settings-tabs"
+import { PricingAssumptions } from "@/components/pricing-assumptions"
+import ValidatedAssumptions from "@/components/validated-assumptions"
+import { CitationsList as Citations } from "@/components/citations"
 import { InfrastructureRecommendation } from "@/components/infrastructure-recommendation"
+import { InfrastructureProvider } from "@/lib/store-init"
+import { initializeStore, saveStore } from "@/lib/store-init"
+import { calculateCosts } from "@/lib/cost-engine"
+import { calculateRevenue } from "@/lib/revenue-engine"
+import { validateSettings } from "@/lib/validation"
+import type { SettingsState, Tab, Platform } from "@/lib/types"
+import { ErrorBoundary } from "react-error-boundary"
 
-export default function CostCalculator() {
-  // Initial default state
-  const defaultState: SettingsState = {
-    platform: "mux",
-    streamEnabled: true, // Initialize to true
-    channelCount: 1,
-    peakConcurrentViewers: 100,
-    encodingPreset: "1080p-tri-ladder",
-    liveDvrEnabled: true,
-    recordingStorageLocation: "same-as-vod",
-    // Add channel statistics - will be overridden by defaultChannels
-    channels: [],
-    vodEnabled: true,
-    vodProvider: "same-as-live",
-    hoursPerDayArchived: 24,
-    retentionWindow: 30,
-    deliveryRegion: "us",
-    peakConcurrentVodViewers: 50,
-    // Add VOD categories
-    vodCategories: [
-      {
-        id: "vod-1",
-        name: "News Archives",
-        monthlyViews: 5000,
-        averageWatchTimeMinutes: 20,
-        adSpotsPerView: 1,
+export default function Home() {
+  const [settings, setSettings] = useState<SettingsState>(
+    initializeStore({
+      platform: "mux",
+      streamEnabled: true,
+      channelCount: 1,
+      peakConcurrentViewers: 100,
+      encodingPreset: "1080p-tri-ladder",
+      liveDvrEnabled: false,
+      recordingStorageLocation: "same-as-vod",
+      channels: [],
+      vodEnabled: true,
+      vodProvider: "same-as-live",
+      hoursPerDayArchived: 8,
+      retentionWindow: 30,
+      deliveryRegion: "us",
+      peakConcurrentVodViewers: 50,
+      vodCategories: [],
+      legacyEnabled: false,
+      backCatalogHours: 0,
+      legacyProvider: "same-as-vod",
+      preEncoded: false,
+      dataStore: "local-sqlite",
+      dbBackupRetention: 7,
+      videoStorageStrategy: "r2",
+      outboundEmail: false,
+      monthlyEmailVolume: 0,
+      cdnPlan: "free",
+      macMiniNeeded: false,
+      networkSwitchNeeded: false,
+      rackHostingLocation: "local",
+      rackCost: 0,
+      serverType: "mac-mini",
+      serverCount: 1,
+      serverCost: 1299,
+      hardwareAvailable: true,
+      serverOpexMo: 0,
+      electricityOpexMo: 0,
+      internetOpexMo: 0,
+      viewerAnalytics: "none",
+      siteAnalytics: "none",
+      globalFillRate: 70,
+      powerRate: 0.144,
+      cdnCostPerGB: 0.085,
+      revenue: {
+        liveAdsEnabled: true,
+        averageDailyUniqueViewers: 1000,
+        averageViewingHoursPerViewer: 1.5,
+        adSpotsPerHour: 4,
         cpmRate: 20,
+        fillRate: 70,
+        peakTimeMultiplier: 1.5,
+        seasonalMultiplier: 1.2,
+        targetDemographicValue: 1.0,
+        paidProgrammingEnabled: false,
+        monthlyPaidBlocks: 0,
+        ratePerBlock: 0,
+        premiumSponsorshipEnabled: false,
+        premiumSponsorshipRate: 0,
+        premiumSponsorshipCount: 0,
+        vodAdsEnabled: true,
+        monthlyVodViews: 5000,
+        adSpotsPerVodView: 2,
+        vodCpmRate: 15,
+        vodFillRate: 60,
+        vodSkipRate: 20,
+        vodCompletionRate: 70,
+        vodPremiumPlacementRate: 0,
       },
-    ],
-    legacyEnabled: false,
-    backCatalogHours: 0,
-    legacyProvider: "same-as-vod",
-    preEncoded: false,
-    dataStore: "local-sqlite",
-    dbBackupRetention: 7,
-    videoStorageStrategy: "local-nas",
-    outboundEmail: false,
-    monthlyEmailVolume: 0,
-    cdnPlan: "free",
-    cdnEgressRate: 0.085,
-    macMiniNeeded: false,
-    networkSwitchNeeded: false,
-    rackHostingLocation: "in-station",
-    rackCost: 0,
-    viewerAnalytics: "none",
-    siteAnalytics: "none",
-    // Hardware defaults
-    serverType: "mac-mini",
-    serverCount: 1,
-    serverCost: 800,
-    hardwareAvailable: false,
-    hardwareMode: "own",
-    amortizationMonths: 24,
-    powerConsumptionKwh: 15,
-    powerCostPerKwh: 0.144,
-    internetColoMonthlyCost: 100,
-    networkSwitchNeeded: false,
-    networkSwitchCost: 200,
-    // Global Settings - will be overridden by globalDefaults
-    globalFillRate: 35,
-    powerRate: 0.144,
-    cdnCostPerGB: 0.03,
-    // Hardware & Hosting Opex - will be overridden by globalDefaults
-    capEx: 1299,
-    amortMonths: 36,
-    wattage: 25,
-    serverOpexMo: 36.08,
-    electricityOpexMo: 2.59,
-    internetOpexMo: 99,
-    // Self-hosted defaults
-    networkInterface: "1gbe",
-    nicCost: 300,
-    enterpriseNetworkCost: "5000",
-    bandwidthCapacity: 1000,
-    streamingServer: "mediamtx",
-    transcodingEngine: "hardware",
-    redundancyLevel: "none",
-    secondaryServerCost: 1300,
-    cloudProvider: "cloudflare",
-    originEgressCost: 0.09,
-    hybridRedundancyMode: "active-passive",
-    // Add revenue settings - will be overridden by globalDefaults
-    revenue: {
-      liveAdsEnabled: true,
-      averageDailyUniqueViewers: 1000,
-      averageViewingHoursPerViewer: 2,
-      adSpotsPerHour: 4,
-      cpmRate: 15,
-      fillRate: 35,
-      peakTimeMultiplier: 1.2,
-      seasonalMultiplier: 1.0,
-      targetDemographicValue: 1.1,
-      paidProgrammingEnabled: true,
-      monthlyPaidBlocks: 4,
-      ratePerBlock: 250,
-      premiumSponsorshipEnabled: false,
-      premiumSponsorshipRate: 500,
-      premiumSponsorshipCount: 0,
-      vodAdsEnabled: true,
-      monthlyVodViews: 5000,
-      adSpotsPerVodView: 1,
-      vodCpmRate: 20,
-      vodFillRate: 35,
-      vodSkipRate: 0.15,
-      vodCompletionRate: 0.85,
-      vodPremiumPlacementRate: 0.05,
-    },
-  }
-
-  // Initialize state with defaults or saved values
-  const [settings, setSettings] = useState<SettingsState>(() => initializeStore(defaultState))
-
-  // Track which fields have been edited by the user
-  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
+    }),
+  )
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
-  const [validationResults, setValidationResults] = useState(validateSettings ? validateSettings(settings) : [])
-  const [showDetailedBreakdown, setShowDetailedBreakdown] = useState(false)
+  const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
 
-  // Calculate derived values whenever relevant inputs change
-  useEffect(() => {
-    const updates: Partial<SettingsState> = {}
-
-    // Calculate serverOpexMo if capEx and amortMonths are set
-    if (settings.capEx !== undefined && settings.amortMonths !== undefined && settings.amortMonths > 0) {
-      updates.serverOpexMo = Number((settings.capEx / settings.amortMonths).toFixed(2))
-    }
-
-    // Calculate electricityOpexMo if wattage and powerRate are set
-    if (settings.wattage !== undefined && settings.powerRate !== undefined) {
-      // Formula: Wattage × 24h × 30d × Power $/kWh ÷ 1000
-      updates.electricityOpexMo = Number(((settings.wattage * 24 * 30 * settings.powerRate) / 1000).toFixed(2))
-    }
-
-    // Only update if there are changes
-    if (Object.keys(updates).length > 0) {
-      setSettings((prev) => ({ ...prev, ...updates }))
-    }
-  }, [settings.capEx, settings.amortMonths, settings.wattage, settings.powerRate])
-
-  // Validate settings whenever they change
-  useEffect(() => {
-    if (validateSettings) {
-      setValidationResults(validateSettings(settings))
-    }
-  }, [settings])
-
-  // Save settings to localStorage whenever they change
-  useEffect(() => {
-    saveStore(settings)
-  }, [settings])
-
+  // Calculate costs based on current settings
   const costs = calculateCosts(settings)
 
-  // Add this after the costs calculation
-  // Update the revenue calculations to use the channel and VOD statistics
-  const revenueCalculations = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
+  // Calculate revenue based on current settings - FIX: Pass the correct parameters
+  const revenue = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
 
+  // Validate settings
+  const validationResults = validateSettings(settings)
+
+  // Update settings and save to localStorage
   const updateSettings = (newSettings: Partial<SettingsState>) => {
-    // Track which fields are being edited
-    const newEditedFields = new Set(editedFields)
+    const updatedSettings = { ...settings, ...newSettings }
+    setSettings(updatedSettings)
+    saveStore(updatedSettings)
+
+    // Track which fields have been edited
+    const newEditedFields = { ...editedFields }
     Object.keys(newSettings).forEach((key) => {
-      newEditedFields.add(key)
+      newEditedFields[key] = true
     })
     setEditedFields(newEditedFields)
-
-    setSettings((prev) => ({ ...prev, ...newSettings }))
   }
 
-  // Check if a field has been edited by the user
-  const isFieldEdited = (fieldPath: string): boolean => {
-    return editedFields.has(fieldPath)
+  // Check if a field has been edited
+  const isEdited = (fieldPath: string) => {
+    return editedFields[fieldPath] === true
   }
 
-  // Update the resetSettings function to include the new fields
-  const resetSettings = () => {
-    setSettings(initializeStore(defaultState))
-    setEditedFields(new Set())
-    setActiveTab("live")
+  // Handle platform change
+  const handlePlatformChange = (platform: Platform) => {
+    updateSettings({ platform })
   }
 
-  const copyToEstimate = () => {
-    // Check for validation errors before allowing export
-    if (hasValidationErrors && hasValidationErrors(validationResults)) {
-      alert("Please fix validation errors before exporting the estimate.")
-      return
-    }
-
-    // Implementation for copying to estimate
-    console.log("Copying to estimate:", settings, costs)
-    // This would typically call an API or generate a CSV
+  // Add a function to update channels
+  const updateChannels = (channels) => {
+    updateSettings({ channels })
   }
 
-  const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
-    { id: "live", label: "Live" },
-    { id: "legacy-vod", label: "Legacy VOD" },
-    { id: "storage", label: "Storage & DB" },
-    { id: "email", label: "Email" },
-    { id: "cdn", label: "CDN", disabled: settings.platform === "mux" && !settings.liveDvrEnabled },
-    { id: "analytics", label: "Analytics" },
-    { id: "revenue", label: "Revenue" }, // Add the revenue tab
-  ]
+  // Add a function to update VOD categories
+  const updateVodCategories = (vodCategories) => {
+    updateSettings({ vodCategories })
+  }
 
   return (
     <InfrastructureProvider>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
-        {/* Header */}
-        <header className="sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
-          <div className="container max-w-5xl mx-auto px-2 sm:px-3 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-blue-600 text-white font-bold rounded-lg p-1.5 sm:p-2">WRCX</div>
-              <Separator orientation="vertical" className="h-6 sm:h-8" />
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Stream & VOD Cost Calculator</h1>
-            </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download size={16} />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
-          </div>
-        </header>
+      <main className="container mx-auto py-6 px-4 max-w-7xl">
+        <h1 className="text-3xl font-bold mb-6">WRCX Stream/VOD Platform Calculator</h1>
 
-        {/* Main Content */}
-        <main className="flex-1 container max-w-5xl mx-auto px-2 sm:px-3 py-4 sm:py-6">
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 sm:gap-6">
-            {/* Left Column - Settings (100% on smaller screens, 60% on xl screens) */}
-            <div className="xl:col-span-3 space-y-4 sm:space-y-6">
-              <PlatformPicker
-                selectedPlatform={settings.platform}
-                onChange={(platform) => updateSettings({ platform })}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left column - Settings */}
+          <div className="lg:col-span-2 space-y-6">
+            <PlatformPicker platform={settings.platform} onChange={handlePlatformChange} />
+
+            {/* Fix: Pass the correct props to SettingsTabs */}
+            <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
+
+            {activeTab === "live" && (
+              <>
+                <SettingsCard
+                  title="Live Streaming"
+                  description="Configure your live streaming settings"
+                  settings={settings}
+                  updateSettings={updateSettings}
+                  type="stream"
+                  validationResults={validationResults}
+                  isEdited={isEdited}
+                />
+
+                {/* Fix: Pass the correct props to ChannelStatistics */}
+                <ChannelStatistics
+                  channels={settings.channels || []}
+                  updateChannels={updateChannels}
+                  defaultFillRate={settings.globalFillRate}
+                  isEdited={isEdited}
+                />
+
+                <ErrorBoundary
+                  fallback={
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                      Error loading infrastructure recommendations
+                    </div>
+                  }
+                >
+                  <InfrastructureRecommendation />
+                </ErrorBoundary>
+
+                <SettingsCard
+                  title="Live → VOD"
+                  description="Configure archiving live streams as VOD content"
+                  settings={settings}
+                  updateSettings={updateSettings}
+                  type="live-to-vod"
+                  validationResults={validationResults}
+                  isEdited={isEdited}
+                />
+              </>
+            )}
+
+            {activeTab === "legacy-vod" && (
+              <>
+                <SettingsCard
+                  title="Legacy VOD"
+                  description="Configure existing video content"
+                  settings={settings}
+                  updateSettings={updateSettings}
+                  type="legacy-vod"
+                  validationResults={validationResults}
+                  isEdited={isEdited}
+                />
+
+                {/* Fix: Pass the correct props to VodStatistics */}
+                <VodStatistics
+                  vodCategories={settings.vodCategories || []}
+                  updateVodCategories={updateVodCategories}
+                  isEdited={isEdited}
+                />
+              </>
+            )}
+
+            {activeTab === "storage" && (
+              <SettingsCard
+                title="Storage & Database"
+                description="Configure storage and database settings"
                 settings={settings}
                 updateSettings={updateSettings}
-                isEdited={isFieldEdited}
+                type="storage-db"
+                validationResults={validationResults}
+                isEdited={isEdited}
               />
+            )}
 
-              {/* Display validation alerts */}
-              {validationResults && validationResults.length > 0 && (
-                <ValidationAlert validationResults={validationResults} />
-              )}
+            {activeTab === "email" && (
+              <SettingsCard
+                title="Email"
+                description="Configure email settings"
+                settings={settings}
+                updateSettings={updateSettings}
+                type="email"
+                validationResults={validationResults}
+                isEdited={isEdited}
+              />
+            )}
 
-              <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
+            {activeTab === "cdn" && (
+              <SettingsCard
+                title="CDN"
+                description="Configure content delivery network settings"
+                settings={settings}
+                updateSettings={updateSettings}
+                type="cdn"
+                validationResults={validationResults}
+                isEdited={isEdited}
+              />
+            )}
 
-              <div className="space-y-4 sm:space-y-6">
-                <AnimatePresence mode="popLayout">
-                  {activeTab === "live" && (
-                    <SettingsCard
-                      key="stream-live"
-                      title="Stream (Live)"
-                      description="Configure your live streaming settings"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="stream"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {/* Only show Live->VOD section if streaming is enabled */}
-                  {activeTab === "live" && settings.streamEnabled !== false && (
-                    // Add the channel and VOD statistics components to the appropriate tabs
-                    <ChannelStatisticsManager
-                      key="channel-statistics"
-                      channels={settings.channels}
-                      updateChannels={(channels) => updateSettings({ channels })}
-                      isEdited={isFieldEdited}
-                      defaultFillRate={settings.globalFillRate}
-                    />
-                  )}
-
-                  {activeTab === "live" && settings.streamEnabled !== false && (
-                    <SettingsCard
-                      key="live-to-vod"
-                      title="Live → VOD"
-                      description="Configure how live streams are archived to VOD"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="live-to-vod"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "legacy-vod" && (
-                    // Add the channel and VOD statistics components to the appropriate tabs
-                    <VodStatisticsManager
-                      key="vod-statistics"
-                      vodCategories={settings.vodCategories}
-                      updateVodCategories={(vodCategories) => updateSettings({ vodCategories })}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "legacy-vod" && (
-                    <SettingsCard
-                      key="legacy-vod"
-                      title="Legacy VOD"
-                      description="Configure settings for your existing video content"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="legacy-vod"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "storage" && (
-                    <SettingsCard
-                      key="storage-db"
-                      title="Storage & Database"
-                      description="Configure your data storage options"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="storage-db"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "email" && (
-                    <SettingsCard
-                      key="email"
-                      title="Email"
-                      description="Configure outbound email settings"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="email"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "cdn" && (
-                    <SettingsCard
-                      key="cdn"
-                      title="CDN"
-                      description="Configure content delivery network settings"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="cdn"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-
-                  {activeTab === "analytics" && (
-                    <SettingsCard
-                      key="analytics"
-                      title="Analytics"
-                      description="Configure viewer and site analytics"
-                      settings={settings}
-                      updateSettings={updateSettings}
-                      type="analytics"
-                      validationResults={validationResults || []}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-                  {activeTab === "revenue" && (
-                    <RevenueSettings
-                      key="revenue"
-                      revenue={settings.revenue}
-                      updateRevenue={(revenueUpdate) =>
-                        setSettings((prev) => ({
-                          ...prev,
-                          revenue: { ...prev.revenue, ...revenueUpdate },
-                        }))
-                      }
-                      globalFillRate={settings.globalFillRate}
-                      updateGlobalFillRate={(value) => updateSettings({ globalFillRate: value })}
-                      isEdited={isFieldEdited}
-                    />
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Add Hardware & Hosting section outside of tabs, always visible */}
-              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
-                <h2 className="text-xl font-semibold mb-4">Hardware & Hosting</h2>
+            {activeTab === "hardware" && (
+              <>
                 <SettingsCard
-                  key="hardware-hosting"
                   title="Hardware & Hosting"
-                  description="Configure physical infrastructure requirements"
+                  description="Configure hardware and hosting settings"
                   settings={settings}
                   updateSettings={updateSettings}
                   type="hardware-hosting"
-                  validationResults={validationResults || []}
-                  isEdited={isFieldEdited}
+                  validationResults={validationResults}
+                  isEdited={isEdited}
                 />
-              </div>
 
-              {/* Add the InfrastructureRecommendation component here */}
-              <div className="mb-8">
-                <InfrastructureRecommendation />
-              </div>
-            </div>
-
-            {/* Right Column - Cost Preview (100% on smaller screens, 40% on xl screens) */}
-            <div className="xl:col-span-2">
-              <div className="space-y-4 sm:space-y-6">
-                <CostPreview costs={costs} settings={settings} revenue={revenueCalculations} />
-
-                {/* Validation warning for cost preview */}
-                {hasValidationErrors && hasValidationErrors(validationResults) && (
-                  <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg flex items-start gap-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                        Cost estimate may be inaccurate
-                      </p>
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                        Please fix validation errors to ensure accurate pricing calculations.
-                      </p>
-                    </div>
-                  </div>
+                {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
+                  <SettingsCard
+                    title="Self-Hosted Configuration"
+                    description="Configure self-hosted streaming settings"
+                    settings={settings}
+                    updateSettings={updateSettings}
+                    type="self-hosted-config"
+                    validationResults={validationResults}
+                    isEdited={isEdited}
+                  />
                 )}
+              </>
+            )}
 
-                {/* Revenue KPIs */}
-                <div className="mb-4 sm:mb-6">
-                  <RevenueKPIs revenue={revenueCalculations} />
-                </div>
+            {activeTab === "analytics" && (
+              <SettingsCard
+                title="Analytics"
+                description="Configure analytics settings"
+                settings={settings}
+                updateSettings={updateSettings}
+                type="analytics"
+                validationResults={validationResults}
+                isEdited={isEdited}
+              />
+            )}
 
-                {/* Revenue vs Cost chart */}
-                <RevenueVsCost revenue={revenueCalculations} costs={costs} />
-              </div>
-            </div>
+            {activeTab === "revenue" && (
+              <>
+                <RevenueSettings settings={settings} updateSettings={updateSettings} />
+                <RevenueKpis revenue={revenue} />
+                <RevenueVsCost revenue={revenue} costs={costs} />
+              </>
+            )}
+
+            <PricingAssumptions settings={settings} updateSettings={updateSettings} />
+            <ValidatedAssumptions settings={settings} validationResults={validationResults} />
+            <Citations platform={settings.platform} />
           </div>
 
-          {/* Research footnote */}
-          <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-1 mx-auto">
-                  <HelpCircle size={14} />
-                  <span className="underline">Why these defaults?</span>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>
-                    Default values are based on April 2025 research summary of typical local TV station streaming
-                    operations.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {/* Right column - Cost Preview */}
+          <div className="space-y-6">
+            <CostPreview costs={costs} settings={settings} />
+            <CostBreakdown costs={costs} settings={settings} />
           </div>
-        </main>
-
-        {/* Footer / Actions */}
-        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md py-3">
-          <div className="container max-w-5xl mx-auto px-2 sm:px-3 flex justify-between items-center">
-            <Button variant="outline" onClick={resetSettings} className="gap-2">
-              <RefreshCw size={16} />
-              <span className="hidden sm:inline">Reset</span>
-            </Button>
-
-            <Button
-              onClick={copyToEstimate}
-              className="gap-2"
-              disabled={hasValidationErrors && hasValidationErrors(validationResults)}
-            >
-              <Copy size={16} />
-              <span className="hidden sm:inline">Copy to Estimate</span>
-            </Button>
-          </div>
-        </footer>
-      </div>
+        </div>
+      </main>
     </InfrastructureProvider>
   )
 }

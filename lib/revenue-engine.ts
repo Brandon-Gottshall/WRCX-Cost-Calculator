@@ -16,6 +16,9 @@ export function calculateRevenue(
   channels?: ChannelStatistics[],
   vodCategories?: VodStatistics[],
 ): RevenueCalculations {
+  // Add a safety check for costs parameter
+  const safeCosts = costs || { encoding: 0, storage: 0, delivery: 0, other: 0 }
+
   // Calculate Live Ad Revenue
   let liveAdRevenue = 0
   const channelRevenues: { channelId: string; revenue: number }[] = []
@@ -145,10 +148,10 @@ export function calculateRevenue(
 
   // Calculate Net Operating Profit
   const totalCost =
-    ensureNumber(costs.encoding) +
-    ensureNumber(costs.storage) +
-    ensureNumber(costs.delivery) +
-    ensureNumber(costs.other)
+    ensureNumber(safeCosts.encoding) +
+    ensureNumber(safeCosts.storage) +
+    ensureNumber(safeCosts.delivery) +
+    ensureNumber(safeCosts.other)
   const netOperatingProfit = totalRevenue - totalCost
 
   return {

@@ -326,3 +326,5 @@ export function VodStatisticsManager({
     </Card>
   )
 }
+
+export { VodStatisticsManager as VodStatistics }
