@@ -32,7 +32,6 @@ export function ChannelStatisticsManager({
 }: ChannelStatisticsProps) {
   const [editingChannel, setEditingChannel] = useState<ExtendedChannelStatistics | null>(null)
   const [isAdding, setIsAdding] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [newChannel, setNewChannel] = useState<Omit<ExtendedChannelStatistics, "id">>({
     name: "",
     viewership: 0,
@@ -115,7 +114,7 @@ export function ChannelStatisticsManager({
           <CardTitle>Channel Statistics</CardTitle>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-slate-500 dark:text-slate-400">Advanced</span>
-            <Switch checked={showAdvanced} onCheckedChange={setShowAdvanced} />
+            <Switch checked={false} onCheckedChange={() => {}} />
           </div>
         </div>
       </CardHeader>

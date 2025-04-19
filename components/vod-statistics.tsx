@@ -13,12 +13,14 @@ interface VodStatisticsProps {
   vodCategories: VodStatistics[]
   updateVodCategories: (vodCategories: VodStatistics[]) => void
   defaultFillRate?: number
+  isEdited?: (fieldPath: string) => boolean
 }
 
 export function VodStatisticsManager({
   vodCategories,
   updateVodCategories,
   defaultFillRate = 100,
+  isEdited,
 }: VodStatisticsProps) {
   const [editingCategory, setEditingCategory] = useState<VodStatistics | null>(null)
   const [isAdding, setIsAdding] = useState(false)

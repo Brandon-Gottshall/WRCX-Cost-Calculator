@@ -27,6 +27,7 @@ import type {
   ChannelStatistics as ChannelStatsType,
   VodStatistics as VodStatsType,
 } from "@/lib/types"
+import { AlertTriangle } from "lucide-react"
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -102,6 +103,7 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
+  const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
   // Calculate costs based on current settings
   const costs = calculateCosts(settings)
@@ -178,7 +180,25 @@ export default function Home() {
                 />
 
                 <div className="relative">
-                  <InfrastructureRecommendation />
+                  {infrastructureError ? (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                        <div>
+                          <h3 className="font-medium text-red-800">Error loading infrastructure recommendations</h3>
+                          <p className="text-sm text-red-600 mt-1">{infrastructureError.message}</p>
+                          <button
+                            onClick={() => setInfrastructureError(null)}
+                            className="mt-2 text-xs text-blue-600 hover:underline"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <InfrastructureRecommendation />
+                  )}
                 </div>
 
                 <SettingsCard
@@ -208,7 +228,7 @@ export default function Home() {
                 <VodStatistics
                   vodCategories={settings.vodCategories || []}
                   updateVodCategories={updateVodCategories}
-                  isEdited={isEdited}
+                  defaultFillRate={settings.globalFillRate}
                 />
               </>
             )}
