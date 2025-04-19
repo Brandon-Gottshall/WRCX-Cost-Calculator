@@ -87,7 +87,12 @@ export function InfrastructureProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <InfrastructureContext.Provider value={{ hardwareSettings, updateHardwareSettings }}>
+    <InfrastructureContext.Provider
+      value={{
+        hardwareSettings,
+        updateHardwareSettings,
+      }}
+    >
       {children}
     </InfrastructureContext.Provider>
   )
