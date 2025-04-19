@@ -1,35 +1,57 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
-import type { SettingsState } from "./types"
+import { defaultChannels } from "@/seed/defaultChannels"
+import { globalDefaults } from "@/seed/globalDefaults"
+import type { SettingsState } from "@/lib/types"
 
-// Original localStorage functions
+const STORAGE_KEY = "wrcx-calculator-state"
+
 export function initializeStore(defaultState: SettingsState): SettingsState {
+  // Check if code is running in browser environment
   if (typeof window === "undefined") {
-    return defaultState
+    // Return default state when running on the server
+    return {
+      ...defaultState,
+      channels: defaultChannels,
+      ...globalDefaults,
+    }
   }
 
+  // Only access localStorage when in browser environment
   try {
-    const savedState = localStorage.getItem("wrcx-calculator-state")
+    const savedState = localStorage.getItem(STORAGE_KEY)
     if (savedState) {
-      return JSON.parse(savedState)
+      try {
+        // Parse and return the saved state
+        return JSON.parse(savedState)
+      } catch (error) {
+        console.error("Failed to parse saved state:", error)
+        // Fall back to default initialization
+      }
     }
   } catch (error) {
-    console.error("Error loading state from localStorage:", error)
+    console.error("Error accessing localStorage:", error)
   }
 
-  return defaultState
+  // If no saved state or parsing failed, initialize with defaults
+  return {
+    ...defaultState,
+    channels: defaultChannels,
+    ...globalDefaults,
+  }
 }
 
 export function saveStore(state: SettingsState): void {
+  // Only attempt to save if in browser environment
   if (typeof window === "undefined") {
     return
   }
 
   try {
-    localStorage.setItem("wrcx-calculator-state", JSON.stringify(state))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch (error) {
-    console.error("Error saving state to localStorage:", error)
+    console.error("Failed to save state:", error)
   }
 }
 
