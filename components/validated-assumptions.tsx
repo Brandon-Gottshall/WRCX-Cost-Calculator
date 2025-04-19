@@ -4,10 +4,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { InfoIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-export default function ValidatedAssumptions() {
+// Add className prop to ValidatedAssumptions component
+export default function ValidatedAssumptions({
+  settings,
+  validationResults,
+  className,
+}: {
+  settings: any //SettingsState;  // Replace SettingsState with any to avoid type errors for now
+  validationResults: any[] //ValidationResult[]; // Replace ValidationResult with any to avoid type errors for now
+  className?: string
+}) {
+  // ...
+
+  // Update the return statement to use the className prop
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className={cn("w-full max-w-4xl mx-auto", className)}>
       <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900">

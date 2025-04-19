@@ -46,6 +46,29 @@ function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
     .reduce((total, channel) => total + (channel.liveHours || 0), 0)
 }
 
+function getBitrateMultiplier(encodingPreset: string): number {
+  switch (encodingPreset) {
+    case "1080p-tri-ladder":
+      return 5 * 2.8 // 5 Mbps base × 2.8 for ladder
+    case "720p-tri-ladder":
+      return 3 * 2.8 // 3 Mbps base × 2.8 for ladder
+    case "480p-tri-ladder":
+      return 1.5 * 2.8 // 1.5 Mbps base × 2.8 for ladder
+    case "1080p-single":
+      return 5 // 5 Mbps single rendition
+    case "720p-single":
+      return 3 // 3 Mbps single rendition
+    case "480p-single":
+      return 1.5 // 1.5 Mbps single rendition
+    case "4k-tri-ladder":
+      return 15 * 2.8 // 15 Mbps base × 2.8 for ladder
+    case "4k-single":
+      return 15 // 15 Mbps single rendition
+    default:
+      return 5 * 2.8 // Default to 1080p tri-ladder
+  }
+}
+
 // Main cost calculation function
 export function calculateCosts(settings: SettingsState): Costs {
   let encodingCost = 0

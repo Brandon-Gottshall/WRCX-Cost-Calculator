@@ -23,6 +23,7 @@ export function SettingsTabs({ activeTab, onChange, settings }: SettingsTabsProp
     { id: "cdn", label: "CDN", disabled: settings.platform === "mux" && !settings.liveDvrEnabled },
     // Removed the hardware tab from here
     { id: "analytics", label: "Analytics" },
+    { id: "reference", label: "Reference" },
     // Remove the self-hosted tab
     // { id: "self-hosted", label: "Self-Hosted Config", disabled: !isSelfHosted },
   ]

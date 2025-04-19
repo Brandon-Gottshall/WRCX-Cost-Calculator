@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export interface Citation {
   id: string
@@ -133,9 +134,9 @@ export function FormulaExplanation({ formula, className }: { formula: string; cl
   )
 }
 
-export function CitationsList() {
+export function CitationsList({ platform, className }: { platform?: any; className?: string }) {
   return (
-    <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
+    <div className={cn("mt-8 border-t border-slate-200 dark:border-slate-800 pt-6", className)}>
       <h3 className="text-lg font-medium mb-4">Citations & References</h3>
       <div className="space-y-3">
         {citations.map((citation) => (

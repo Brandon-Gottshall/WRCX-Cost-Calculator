@@ -1,6 +1,15 @@
 export type Platform = "mux" | "cloudflare" | "self-hosted" | "hybrid"
 
-export type Tab = "live" | "legacy-vod" | "storage" | "email" | "cdn" | "hardware" | "analytics" | "revenue"
+export type Tab =
+  | "live"
+  | "legacy-vod"
+  | "storage"
+  | "email"
+  | "cdn"
+  | "hardware"
+  | "analytics"
+  | "revenue"
+  | "reference"
 
 export interface ChannelStatistics {
   id: string
@@ -97,6 +106,11 @@ export interface SettingsState {
   powerRate: number // "Power $/kWh" – electricity cost per kilowatt-hour
   cdnCostPerGB: number // "CDN $/GB" – egress cost per GB of streaming data
   avgBitrateOverride?: number // "Avg Bitrate (Mbps)" – use this value instead of preset for self-host
+
+  // New fields for hardware recommendations
+  cpuCores?: number
+  memoryGB?: number
+  avgBitrateOverride?: number // Average bitrate per viewer in Mbps
 
   // Hardware & Hosting Opex
   capEx?: number // "Cap-ex $" – up-front cost of hardware (e.g. Mac Mini)

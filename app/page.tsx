@@ -5,7 +5,6 @@ import { SettingsCard } from "@/components/settings-card"
 import { CostBreakdown } from "@/components/cost-breakdown"
 import { CostPreview } from "@/components/cost-preview"
 import { PlatformPicker } from "@/components/platform-picker"
-import { ChannelStatisticsManager as ChannelStatistics } from "@/components/channel-statistics"
 import { VodStatisticsManager as VodStatistics } from "@/components/vod-statistics"
 import { RevenueSettings } from "@/components/revenue-settings"
 import { RevenueKPIs as RevenueKpis } from "@/components/revenue-kpis"
@@ -14,21 +13,14 @@ import { SettingsTabs } from "@/components/settings-tabs"
 import { PricingAssumptions } from "@/components/pricing-assumptions"
 import ValidatedAssumptions from "@/components/validated-assumptions"
 import { CitationsList as Citations } from "@/components/citations"
-import { InfrastructureRecommendation } from "@/components/infrastructure-recommendation"
 import { InfrastructureProvider } from "@/lib/store-init"
 import { initializeStore, saveStore } from "@/lib/store-init"
 import { calculateCosts } from "@/lib/cost-engine"
 import { calculateRevenue } from "@/lib/revenue-engine"
 import { validateSettings } from "@/lib/validation"
-import type {
-  SettingsState,
-  Tab,
-  Platform,
-  ChannelStatistics as ChannelStatsType,
-  VodStatistics as VodStatsType,
-  RevenueState,
-} from "@/lib/types"
-import { AlertTriangle, Info } from "lucide-react"
+import { LiveChannels } from "@/components/live-channels" // Import the new unified component
+import type { SettingsState, Tab, Platform, VodStatistics as VodStatsType, RevenueState } from "@/lib/types"
+import { Info } from "lucide-react"
 import { UnifiedHardwareRecommendations } from "@/components/unified-hardware-recommendations"
 
 export default function Home() {
@@ -152,73 +144,50 @@ export default function Home() {
     updateSettings({ platform })
   }
 
-  // Add a function to update channels
-  const updateChannels = (channels: ChannelStatsType[]) => {
-    updateSettings({ channels })
-  }
-
   // Add a function to update VOD categories
   const updateVodCategories = (vodCategories: VodStatsType[]) => {
     updateSettings({ vodCategories })
   }
+
+  // Determine if we should show hardware recommendations
+  const showHardwareRecommendations = settings.platform === "self-hosted" || settings.platform === "hybrid"
 
   return (
     <InfrastructureProvider>
       <main className="container mx-auto py-6 px-4 max-w-7xl">
         <h1 className="text-3xl font-bold mb-6">WRCX Stream/VOD Platform Calculator</h1>
 
+        {/* Platform Picker - always visible at the top */}
+        <div className="mb-6">
+          <PlatformPicker
+            platform={settings.platform}
+            onChange={handlePlatformChange}
+            settings={settings}
+            updateSettings={updateSettings}
+          />
+        </div>
+
+        {/* Mobile-only hardware recommendations - shown after Platform Picker on small screens */}
+        {showHardwareRecommendations && (
+          <div className="lg:hidden mb-6">
+            <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column - Settings */}
           <div className="lg:col-span-2 space-y-6">
-            <PlatformPicker
-              platform={settings.platform}
-              onChange={handlePlatformChange}
-              settings={settings}
-              updateSettings={updateSettings}
-            />
-
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
             {activeTab === "live" && (
               <>
-                <SettingsCard
-                  title="Live Streaming"
-                  description="Configure your live streaming settings"
+                {/* Use the new unified LiveChannels component instead of separate components */}
+                <LiveChannels
                   settings={settings}
                   updateSettings={updateSettings}
-                  type="stream"
                   validationResults={validationResults}
                   isEdited={isEdited}
                 />
-
-                <ChannelStatistics
-                  channels={settings.channels || []}
-                  updateChannels={updateChannels}
-                  defaultFillRate={settings.globalFillRate}
-                  isEdited={isEdited}
-                />
-
-                <div className="relative">
-                  {infrastructureError ? (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                        <div>
-                          <h3 className="font-medium text-red-800">Error loading infrastructure recommendations</h3>
-                          <p className="text-sm text-red-600 mt-1">{infrastructureError.message}</p>
-                          <button
-                            onClick={() => setInfrastructureError(null)}
-                            className="mt-2 text-xs text-blue-600 hover:underline"
-                          >
-                            Try again
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <InfrastructureRecommendation />
-                  )}
-                </div>
 
                 <SettingsCard
                   title="Live → VOD"
@@ -295,8 +264,8 @@ export default function Home() {
                   <div>
                     <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Hardware Configuration</h3>
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Hardware recommendations are now displayed in the right sidebar for easier access. You can
-                      configure your infrastructure settings there.
+                      Hardware recommendations are displayed below the platform picker on mobile devices and in the
+                      right sidebar on desktop.
                     </p>
                   </div>
                 </div>
@@ -329,16 +298,22 @@ export default function Home() {
               </>
             )}
 
-            <PricingAssumptions settings={settings} updateSettings={updateSettings} />
-            <ValidatedAssumptions settings={settings} validationResults={validationResults} />
-            <Citations platform={settings.platform} />
+            {activeTab === "reference" && (
+              <>
+                <PricingAssumptions platform={settings.platform} className="mb-6" />
+                <ValidatedAssumptions settings={settings} validationResults={validationResults} className="mb-6" />
+                <Citations platform={settings.platform} />
+              </>
+            )}
           </div>
 
           {/* Right column - Hardware Recommendations and Cost Preview */}
           <div className="space-y-6">
-            {/* Hardware Recommendations - now always visible in the right column */}
-            {settings.platform === "self-hosted" || settings.platform === "hybrid" ? (
-              <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+            {/* Hardware Recommendations - desktop only */}
+            {showHardwareRecommendations ? (
+              <div className="hidden lg:block">
+                <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+              </div>
             ) : (
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
                 <div className="flex items-start gap-2">

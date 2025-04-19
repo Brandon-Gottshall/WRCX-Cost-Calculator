@@ -110,8 +110,7 @@ const HARDWARE_OPTIONS = [
   },
 ]
 
-// Update the calculateHardwareRequirements function to provide more accurate recommendations
-// based on the number of live channels, VOD library size, and platform type
+// Find the calculateHardwareRequirements function and enhance it with more accurate calculations
 
 export function calculateHardwareRequirements(settings: any) {
   // Default values to prevent undefined
@@ -123,76 +122,100 @@ export function calculateHardwareRequirements(settings: any) {
     maxViewers: 50,
     recommendedHardware: "Standard Server",
     estimatedCost: 1299,
+    isAvailable: true,
   }
 
-  // Your existing calculation logic...
   // Base requirements
-  let cpuCores = 2
+  const initialCpuCores = 2
   let memoryGB = 4
   let storageGB = 100
   let bandwidthMbps = 500
 
-  // Calculate based on live channels
-  if (settings.liveChannels && settings.liveChannels.length > 0) {
-    const totalViewers = settings.liveChannels.reduce((sum, channel) => sum + channel.concurrentViewers, 0)
-    const totalBitrate = settings.liveChannels.reduce((sum, channel) => sum + channel.bitrateMbps, 0)
+  // Calculate based on channels and viewers
+  const channelCount = settings.channelCount || 1
+  const peakViewers = settings.peakConcurrentViewers || 100
+  const bitratePerViewer = settings.avgBitrateOverride || 3 // Mbps
 
-    // CPU: 1 core per 500 concurrent viewers, minimum 2
-    cpuCores = Math.max(2, Math.ceil(totalViewers / 500))
+  // Calculate CPU requirements based on encoding preset and channel count
+  let cpuCores = 2 // Base requirement
+  if (settings.streamEnabled) {
+    const encodingPresetMultiplier =
+      settings.encodingPreset === "4k-tri-ladder"
+        ? 4
+        : settings.encodingPreset === "4k-single"
+          ? 2.5
+          : settings.encodingPreset === "1080p-tri-ladder"
+            ? 2
+            : settings.encodingPreset === "720p-tri-ladder"
+              ? 1.5
+              : settings.encodingPreset === "480p-tri-ladder"
+                ? 1.2
+                : settings.encodingPreset === "1080p-single"
+                  ? 1.2
+                  : settings.encodingPreset === "720p-single"
+                    ? 1
+                    : settings.encodingPreset === "480p-single"
+                      ? 0.8
+                      : 1.5
 
-    // Memory: 2GB base + 1GB per 1000 viewers
-    memoryGB = Math.max(4, 2 + Math.ceil(totalViewers / 1000) * 2)
-
-    // Bandwidth: Sum of all channel bitrates * viewers * safety factor
-    bandwidthMbps = Math.max(500, Math.ceil(totalBitrate * Math.sqrt(totalViewers) * 1.5))
+    cpuCores += (settings.channelCount || 1) * encodingPresetMultiplier
   }
 
-  // Calculate based on VOD library
-  if (settings.vodLibrary && settings.vodLibrary.items > 0) {
-    // Storage: 1GB per minute of content at HD quality
-    const additionalStorage = settings.vodLibrary.items * settings.vodLibrary.avgDurationMin * 0.1
-    storageGB = Math.max(100, Math.ceil(additionalStorage))
+  // Memory: Base + 2GB per channel + 1GB per 200 concurrent viewers
+  memoryGB = 4 + channelCount * 2 + Math.ceil(peakViewers / 200)
 
-    // Add more CPU and memory for VOD transcoding
-    cpuCores += Math.ceil(settings.vodLibrary.items / 100)
-    memoryGB += Math.ceil(settings.vodLibrary.items / 50)
+  // Storage: Base + VOD storage based on retention
+  if (settings.vodEnabled) {
+    const hoursPerDay = settings.hoursPerDayArchived || 8
+    const retentionDays = settings.retentionWindow || 30
+    const storagePerHour = 2 // GB per hour of HD content
+
+    const vodStorageGB = hoursPerDay * retentionDays * storagePerHour
+    storageGB = 100 + vodStorageGB
   }
 
-  // Platform-specific adjustments
-  if (settings.platformType === "self-hosted") {
-    // Self-hosted needs more resources
-    cpuCores = Math.ceil(cpuCores * 1.5)
-    memoryGB = Math.ceil(memoryGB * 1.5)
-    storageGB = Math.ceil(storageGB * 2)
-  } else if (settings.platformType === "hybrid") {
-    // Hybrid needs moderate resources
-    cpuCores = Math.ceil(cpuCores * 1.2)
-    memoryGB = Math.ceil(memoryGB * 1.2)
-  }
+  // Network: Based on concurrent viewers and bitrate
+  bandwidthMbps = peakViewers * bitratePerViewer
+
+  // Add safety margin
+  cpuCores = Math.ceil(cpuCores * 1.2) // 20% overhead
+  memoryGB = Math.ceil(memoryGB * 1.2) // 20% overhead
+  bandwidthMbps = Math.ceil(bandwidthMbps * 1.2) // 20% overhead
 
   // Round to reasonable increments
   cpuCores = Math.ceil(cpuCores / 2) * 2 // Round to even numbers
-  memoryGB = Math.ceil(memoryGB / 2) * 2 // Round to even numbers
+  memoryGB = Math.ceil(memoryGB / 4) * 4 // Round to multiples of 4
   storageGB = Math.ceil(storageGB / 50) * 50 // Round to nearest 50GB
   bandwidthMbps = Math.ceil(bandwidthMbps / 100) * 100 // Round to nearest 100Mbps
 
-  const calculatedCpuCores = cpuCores
-  const calculatedMemoryGB = memoryGB
-  const calculatedStorageGB = storageGB
-  const calculatedNetworkMbps = bandwidthMbps
-  const calculatedMaxViewers = 50 // Placeholder, needs actual calculation
-  const calculatedRecommendedHardware = "Standard Server" // Placeholder, needs actual logic
-  const calculatedEstimatedCost = 1299 // Placeholder, needs actual logic
+  // Determine recommended hardware based on requirements
+  let recommendedHardware = "Mac Mini (M2 Pro)"
+  let estimatedCost = 1299
+
+  if (cpuCores > 12 || memoryGB > 32) {
+    recommendedHardware = "Mac Studio (M2 Ultra)"
+    estimatedCost = 3999
+  } else if (cpuCores > 8 || memoryGB > 16) {
+    recommendedHardware = "Mac Studio (M2 Max)"
+    estimatedCost = 2999
+  } else if (cpuCores > 4 || memoryGB > 8) {
+    recommendedHardware = "Mac Mini (M2 Pro, 32GB)"
+    estimatedCost = 1899
+  }
+
+  // Calculate max viewers based on network interface
+  const maxViewers = Math.floor((settings.networkInterface === "10gbe" ? 10000 : 1000) / bitratePerViewer)
 
   // Ensure we always return valid values
   return {
-    cpuCores: Math.max(1, calculatedCpuCores || defaultRequirements.cpuCores),
-    memoryGB: Math.max(1, calculatedMemoryGB || defaultRequirements.memoryGB),
-    storageGB: Math.max(10, calculatedStorageGB || defaultRequirements.storageGB),
-    networkMbps: Math.max(10, calculatedNetworkMbps || defaultRequirements.networkMbps),
-    maxViewers: Math.max(1, calculatedMaxViewers || defaultRequirements.maxViewers),
-    recommendedHardware: calculatedRecommendedHardware || defaultRequirements.recommendedHardware,
-    estimatedCost: Math.max(0, calculatedEstimatedCost || defaultRequirements.estimatedCost),
+    cpuCores: Math.max(1, cpuCores || defaultRequirements.cpuCores),
+    memoryGB: Math.max(1, memoryGB || defaultRequirements.memoryGB),
+    storageGB: Math.max(10, storageGB || defaultRequirements.storageGB),
+    networkMbps: Math.max(10, bandwidthMbps || defaultRequirements.networkMbps),
+    maxViewers: Math.max(1, maxViewers || defaultRequirements.maxViewers),
+    recommendedHardware: recommendedHardware || defaultRequirements.recommendedHardware,
+    estimatedCost: Math.max(0, estimatedCost || defaultRequirements.estimatedCost),
+    isAvailable: true,
   }
 }
 
