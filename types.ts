@@ -38,10 +38,6 @@ export interface SettingsState {
   // CDN
   cdnPlan: string
   cdnEgressRate?: number
-  websiteCdnPlan?: string
-  videoCdnProvider?: string
-  videoCdnPlan?: string
-  videoCdnEgressRate?: number
 
   // Hardware & Hosting
   macMiniNeeded: boolean

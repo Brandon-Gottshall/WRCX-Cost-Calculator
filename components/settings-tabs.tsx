@@ -13,6 +13,8 @@ interface SettingsTabsProps {
 }
 
 export function SettingsTabs({ activeTab, onChange, settings }: SettingsTabsProps) {
+  const isSelfHosted = settings.platform === "self-hosted" || settings.platform === "hybrid"
+
   const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
     { id: "live", label: "Live" },
     { id: "legacy-vod", label: "Legacy VOD" },
@@ -21,6 +23,8 @@ export function SettingsTabs({ activeTab, onChange, settings }: SettingsTabsProp
     { id: "cdn", label: "CDN", disabled: settings.platform === "mux" && !settings.liveDvrEnabled },
     { id: "hardware", label: "Hardware & Hosting" },
     { id: "analytics", label: "Analytics" },
+    // Remove the self-hosted tab
+    // { id: "self-hosted", label: "Self-Hosted Config", disabled: !isSelfHosted },
   ]
 
   // For mobile view

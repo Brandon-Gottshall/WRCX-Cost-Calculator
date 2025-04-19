@@ -15,6 +15,7 @@ import type { SettingsState, Tab } from "@/lib/types"
 export default function CostCalculator() {
   const [settings, setSettings] = useState<SettingsState>({
     platform: "mux",
+    streamEnabled: true, // Initialize to true
     channelCount: 1,
     peakConcurrentViewers: 100,
     encodingPreset: "1080p-tri-ladder",
@@ -30,18 +31,36 @@ export default function CostCalculator() {
     backCatalogHours: 0,
     legacyProvider: "same-as-vod",
     preEncoded: false,
-    dataStore: "yaml",
+    dataStore: "local-sqlite",
     dbBackupRetention: 7,
     videoStorageStrategy: "local-nas",
     outboundEmail: false,
     monthlyEmailVolume: 0,
     cdnPlan: "free",
+    cdnEgressRate: 0.085,
     macMiniNeeded: false,
     networkSwitchNeeded: false,
     rackHostingLocation: "in-station",
     rackCost: 0,
     viewerAnalytics: "none",
     siteAnalytics: "none",
+    // Hardware defaults
+    serverType: "mac-mini",
+    serverCount: 1,
+    serverCost: 1299,
+    hardwareAvailable: false,
+    // Self-hosted defaults
+    networkInterface: "1gbe",
+    nicCost: 300,
+    enterpriseNetworkCost: 5000,
+    bandwidthCapacity: 1000,
+    streamingServer: "mediamtx",
+    transcodingEngine: "hardware",
+    redundancyLevel: "none",
+    secondaryServerCost: 1300,
+    cloudProvider: "cloudflare",
+    originEgressCost: 0.09,
+    hybridRedundancyMode: "active-passive",
   })
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
@@ -55,6 +74,7 @@ export default function CostCalculator() {
   const resetSettings = () => {
     setSettings({
       platform: "mux",
+      streamEnabled: true, // Initialize to true
       channelCount: 1,
       peakConcurrentViewers: 100,
       encodingPreset: "1080p-tri-ladder",
@@ -70,18 +90,36 @@ export default function CostCalculator() {
       backCatalogHours: 0,
       legacyProvider: "same-as-vod",
       preEncoded: false,
-      dataStore: "yaml",
+      dataStore: "local-sqlite",
       dbBackupRetention: 7,
       videoStorageStrategy: "local-nas",
       outboundEmail: false,
       monthlyEmailVolume: 0,
       cdnPlan: "free",
+      cdnEgressRate: 0.085,
       macMiniNeeded: false,
       networkSwitchNeeded: false,
       rackHostingLocation: "in-station",
       rackCost: 0,
       viewerAnalytics: "none",
       siteAnalytics: "none",
+      // Hardware defaults
+      serverType: "mac-mini",
+      serverCount: 1,
+      serverCost: 1299,
+      hardwareAvailable: false,
+      // Self-hosted defaults
+      networkInterface: "1gbe",
+      nicCost: 300,
+      enterpriseNetworkCost: 5000,
+      bandwidthCapacity: 1000,
+      streamingServer: "mediamtx",
+      transcodingEngine: "hardware",
+      redundancyLevel: "none",
+      secondaryServerCost: 1300,
+      cloudProvider: "cloudflare",
+      originEgressCost: 0.09,
+      hybridRedundancyMode: "active-passive",
     })
     setActiveTab("live")
   }
@@ -91,6 +129,8 @@ export default function CostCalculator() {
     console.log("Copying to estimate:", settings, costs)
     // This would typically call an API or generate a CSV
   }
+
+  const isSelfHosted = settings.platform === "self-hosted" || settings.platform === "hybrid"
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
@@ -117,6 +157,8 @@ export default function CostCalculator() {
             <PlatformPicker
               selectedPlatform={settings.platform}
               onChange={(platform) => updateSettings({ platform })}
+              settings={settings}
+              updateSettings={updateSettings}
             />
 
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
@@ -134,7 +176,8 @@ export default function CostCalculator() {
                   />
                 )}
 
-                {activeTab === "live" && settings.liveDvrEnabled && (
+                {/* Only show Live->VOD section if streaming is enabled */}
+                {activeTab === "live" && settings.streamEnabled !== false && (
                   <SettingsCard
                     key="live-to-vod"
                     title="Live → VOD"
