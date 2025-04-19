@@ -470,6 +470,24 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                               Based on your selections:
                             </div>
 
+                            {/* Self-hosted storage explanation */}
+                            {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
+                              <div className="text-xs bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md">
+                                <span className="font-medium">Self-hosted storage costs include:</span>
+                                <ul className="mt-1 list-disc pl-4 space-y-1">
+                                  <li>Hardware amortization (drives, NAS devices)</li>
+                                  <li>Maintenance and replacement costs</li>
+                                  <li>Power consumption</li>
+                                  <li>Backup infrastructure</li>
+                                  <li>Cloud object storage (R2/S3) if selected</li>
+                                </ul>
+                                <p className="mt-1">
+                                  These costs are estimated at ~$0.01/GB-month for local storage or $0.015/GB-month for
+                                  R2.
+                                </p>
+                              </div>
+                            )}
+
                             {/* VOD Storage details */}
                             {settings.vodEnabled && (
                               <>
@@ -486,7 +504,7 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                       ? "$0.003/min (Mux)"
                                       : settings.platform === "cloudflare" || settings.vodProvider === "cloudflare"
                                         ? "$0.005/min (Cloudflare)"
-                                        : "$0.015/GB-month (R2)"}
+                                        : "$0.015/GB-month (R2) or ~$0.01/GB-month (local)"}
                                   </span>
                                 </div>
                                 <div className="text-xs">
