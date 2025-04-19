@@ -86,6 +86,19 @@ function getPlatformName(platform: Platform): string {
   }
 }
 
+// Helper function to calculate total live hours per day across all enabled channels
+function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
+  // If channels array doesn't exist or is empty, fall back to the global setting
+  if (!settings.channels || settings.channels.length === 0) {
+    return settings.hoursPerDayArchived || 0
+  }
+
+  // Sum up liveHours from all enabled channels
+  return settings.channels
+    .filter((channel) => channel.enabled !== false) // Only include enabled channels
+    .reduce((total, channel) => total + (channel.liveHours || 0), 0)
+}
+
 // Now modify the CostPreview component to include the pricing assumptions in the detailed view
 export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
   const [showDetailView, setShowDetailView] = useState(false)
@@ -124,6 +137,9 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
 
   // Get platform-specific pricing assumptions
   const platformAssumptions = getPricingAssumptions(settings.platform)
+
+  // Calculate total live hours per day for VOD storage
+  const totalLiveHoursPerDay = calculateTotalLiveHoursPerDay(settings)
 
   return (
     <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -221,7 +237,9 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                 </p>
                 <p>• {settings.peakConcurrentViewers} peak viewers per channel</p>
                 {settings.liveDvrEnabled && <p>• Live DVR enabled</p>}
-                {settings.vodEnabled && <p>• VOD archiving: {settings.hoursPerDayArchived} hours/day</p>}
+                {settings.vodEnabled && (
+                  <p>• VOD archiving: {totalLiveHoursPerDay} hours/day (based on channel schedules)</p>
+                )}
               </div>
             </div>
 
@@ -261,7 +279,31 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                     <h3 className="text-xl font-semibold">Encoding Costs</h3>
                   </div>
 
+                  {/* Add platform-specific explanation */}
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
+                    {settings.platform === "self-hosted" || settings.platform === "hybrid" ? (
+                      <div className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                        <p className="font-medium mb-2">For self-hosted solutions, encoding costs include:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Amortized hardware costs (servers used for transcoding)</li>
+                          <li>Electricity consumption for encoding operations</li>
+                          <li>Software licensing (if applicable)</li>
+                          <li>Operational overhead</li>
+                        </ul>
+                        <p className="mt-2">
+                          These are calculated based on your server specifications and usage patterns.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+                        <p>
+                          Encoding costs represent the fees charged by{" "}
+                          {settings.platform === "mux" ? "Mux" : "Cloudflare"} for transcoding your live streams into
+                          multiple formats and bitrates for delivery to viewers.
+                        </p>
+                      </div>
+                    )}
+
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-700">
@@ -437,7 +479,9 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                             <td className="py-3 text-sm">
                               <div className="font-medium">VOD Storage</div>
                               <div className="text-xs text-slate-500 dark:text-slate-400">
-                                {settings.hoursPerDayArchived} hours/day × {settings.retentionWindow} days retention
+                                {totalLiveHoursPerDay} hours/day × {settings.retentionWindow} days retention
+                                <br />
+                                <span className="italic">(Based on actual live hours from enabled channels)</span>
                               </div>
                             </td>
                             <td className="py-3 text-right font-mono text-sm">{formatCurrency(costs.storage * 0.6)}</td>
@@ -510,7 +554,16 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                 <div className="text-xs">
                                   <span className="text-slate-600 dark:text-slate-400">VOD storage:</span>{" "}
                                   <span className="font-mono">
-                                    {settings.hoursPerDayArchived} hours/day × {settings.retentionWindow} days retention
+                                    {totalLiveHoursPerDay} hours/day × {settings.retentionWindow} days retention
+                                  </span>
+                                </div>
+                                <div className="text-xs">
+                                  <span className="text-slate-600 dark:text-slate-400">Channel breakdown:</span>{" "}
+                                  <span className="font-mono">
+                                    {settings.channels
+                                      .filter((channel) => channel.enabled !== false)
+                                      .map((channel) => `${channel.name}: ${channel.liveHours || 0}h/day`)
+                                      .join(", ")}
                                   </span>
                                 </div>
                                 <div className="text-xs">
@@ -526,8 +579,7 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                 <div className="text-xs">
                                   <span className="text-slate-600 dark:text-slate-400">Calculation:</span>{" "}
                                   <span className="font-mono">
-                                    {settings.hoursPerDayArchived} hours × 60 min × {settings.retentionWindow} days ×{" "}
-                                    {settings.channelCount} channels × $
+                                    {totalLiveHoursPerDay} hours × 60 min × {settings.retentionWindow} days × $
                                     {settings.platform === "mux" || settings.vodProvider === "mux"
                                       ? "0.003"
                                       : settings.platform === "cloudflare" || settings.vodProvider === "cloudflare"

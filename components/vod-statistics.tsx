@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { VodStatistics } from "@/lib/types"
 
@@ -70,165 +69,190 @@ export function VodStatisticsManager({
 
   return (
     <Card className="border-slate-200 dark:border-slate-800">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-purple-50 dark:from-slate-900 dark:to-purple-900/30">
+      <CardHeader className="bg-gradient-to-r from-slate-50 to-purple-50 dark:from-slate-900 dark:to-purple-900/30 px-3 sm:px-4 py-3">
         <CardTitle>VOD Statistics</CardTitle>
       </CardHeader>
-      <CardContent className="p-6">
-        <div className="space-y-4">
+      <CardContent className="p-3 sm:p-4">
+        <div className="space-y-3 sm:space-y-4">
           {vodCategories.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category Name</TableHead>
-                  <TableHead className="text-right">Monthly Views</TableHead>
-                  <TableHead className="text-right">Avg. Watch Time (min)</TableHead>
-                  <TableHead className="text-right">Ad Spots/View</TableHead>
-                  <TableHead className="text-right">Fill Rate (%)</TableHead>
-                  <TableHead className="text-right">CPM Rate</TableHead>
-                  <TableHead className="text-right">Est. Monthly Revenue</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vodCategories.map((category) => (
-                  <TableRow key={category.id}>
-                    {editingCategory?.id === category.id ? (
-                      // Editing mode
-                      <>
-                        <TableCell>
-                          <Input
-                            value={editingCategory.name}
-                            onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={editingCategory.monthlyViews}
-                            onChange={(e) =>
-                              setEditingCategory({ ...editingCategory, monthlyViews: Number(e.target.value) })
-                            }
-                            className="w-24 text-right ml-auto"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={editingCategory.averageWatchTimeMinutes}
-                            onChange={(e) =>
-                              setEditingCategory({
-                                ...editingCategory,
-                                averageWatchTimeMinutes: Number(e.target.value),
-                              })
-                            }
-                            className="w-24 text-right ml-auto"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={editingCategory.adSpotsPerView}
-                            onChange={(e) =>
-                              setEditingCategory({ ...editingCategory, adSpotsPerView: Number(e.target.value) })
-                            }
-                            className="w-24 text-right ml-auto"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={editingCategory.fillRate !== undefined ? editingCategory.fillRate : defaultFillRate}
-                            onChange={(e) =>
-                              setEditingCategory({ ...editingCategory, fillRate: Number(e.target.value) })
-                            }
-                            className="w-24 text-right ml-auto"
-                            placeholder={`Default (${defaultFillRate}%)`}
-                          />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={editingCategory.cpmRate}
-                            onChange={(e) =>
-                              setEditingCategory({ ...editingCategory, cpmRate: Number(e.target.value) })
-                            }
-                            className="w-24 text-right ml-auto"
-                          />
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(calculateVodRevenue(editingCategory))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={handleUpdateCategory}>
-                              <Save className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingCategory(null)}>
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    ) : (
-                      // View mode
-                      <>
-                        <TableCell>{category.name}</TableCell>
-                        <TableCell className="text-right">{category.monthlyViews.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{category.averageWatchTimeMinutes}</TableCell>
-                        <TableCell className="text-right">{category.adSpotsPerView}</TableCell>
-                        <TableCell className="text-right">
-                          {category.fillRate !== undefined ? `${category.fillRate}%` : `${defaultFillRate}% (default)`}
-                        </TableCell>
-                        <TableCell className="text-right">${category.cpmRate.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(calculateVodRevenue(category))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setEditingCategory(category)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteCategory(category.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto -mx-2 px-2">
+              <div className="inline-block min-w-full align-middle px-3 sm:px-4">
+                <div className="overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                        >
+                          Category
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                        >
+                          Views
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                        >
+                          Watch Time
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                        >
+                          Revenue
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                      {vodCategories.map((category) => (
+                        <tr key={category.id}>
+                          {editingCategory?.id === category.id ? (
+                            // Editing mode - simplified for mobile
+                            <>
+                              <td className="py-2 px-1">
+                                <Input
+                                  value={editingCategory.name}
+                                  onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                  className="w-full text-sm"
+                                />
+                              </td>
+                              <td className="py-2 px-1">
+                                <Input
+                                  type="number"
+                                  value={editingCategory.monthlyViews}
+                                  onChange={(e) =>
+                                    setEditingCategory({ ...editingCategory, monthlyViews: Number(e.target.value) })
+                                  }
+                                  className="w-full text-sm text-right"
+                                />
+                              </td>
+                              <td className="py-2 px-1">
+                                <Input
+                                  type="number"
+                                  value={editingCategory.averageWatchTimeMinutes}
+                                  onChange={(e) =>
+                                    setEditingCategory({
+                                      ...editingCategory,
+                                      averageWatchTimeMinutes: Number(e.target.value),
+                                    })
+                                  }
+                                  className="w-full text-sm text-right"
+                                />
+                              </td>
+                              <td className="py-2 px-1 text-right font-mono text-xs">
+                                {formatCurrency(calculateVodRevenue(editingCategory))}
+                              </td>
+                              <td className="py-2 px-1">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleUpdateCategory}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCategory(null)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            // View mode - simplified for mobile
+                            <>
+                              <td className="py-2 px-1 text-xs sm:text-sm">{category.name}</td>
+                              <td className="py-2 px-1 text-right text-xs sm:text-sm">
+                                {category.monthlyViews.toLocaleString()}
+                              </td>
+                              <td className="py-2 px-1 text-right text-xs sm:text-sm">
+                                {category.averageWatchTimeMinutes}m
+                              </td>
+                              <td className="py-2 px-1 text-right font-mono text-xs">
+                                {formatCurrency(calculateVodRevenue(category))}
+                              </td>
+                              <td className="py-2 px-1">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingCategory(category)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteCategory(category.id)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+            <div className="text-center py-6 text-slate-500 dark:text-slate-400">
               No VOD categories added yet. Add a category to track statistics.
             </div>
           )}
 
           {isAdding ? (
-            <div className="border rounded-md p-4 space-y-4">
-              <h3 className="font-medium">Add New VOD Category</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="categoryName">Category Name</Label>
+            <div className="border rounded-md p-3 space-y-3">
+              <h3 className="font-medium text-sm">Add New VOD Category</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="categoryName" className="text-xs">
+                    Category Name
+                  </Label>
                   <Input
                     id="categoryName"
                     value={newCategory.name}
                     onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                     placeholder="News Archives"
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthlyViews">Monthly Views</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="monthlyViews" className="text-xs">
+                    Monthly Views
+                  </Label>
                   <Input
                     id="monthlyViews"
                     type="number"
                     value={newCategory.monthlyViews}
                     onChange={(e) => setNewCategory({ ...newCategory, monthlyViews: Number(e.target.value) })}
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="watchTime">Avg. Watch Time (minutes)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="watchTime" className="text-xs">
+                    Avg. Watch Time (minutes)
+                  </Label>
                   <Input
                     id="watchTime"
                     type="number"
@@ -236,46 +260,63 @@ export function VodStatisticsManager({
                     onChange={(e) =>
                       setNewCategory({ ...newCategory, averageWatchTimeMinutes: Number(e.target.value) })
                     }
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adSpots">Ad Spots per View</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="adSpots" className="text-xs">
+                    Ad Spots per View
+                  </Label>
                   <Input
                     id="adSpots"
                     type="number"
                     value={newCategory.adSpotsPerView}
                     onChange={(e) => setNewCategory({ ...newCategory, adSpotsPerView: Number(e.target.value) })}
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fillRate">Fill Rate (%)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="fillRate" className="text-xs">
+                    Fill Rate (%)
+                  </Label>
                   <Input
                     id="fillRate"
                     type="number"
                     value={newCategory.fillRate !== undefined ? newCategory.fillRate : defaultFillRate}
                     onChange={(e) => setNewCategory({ ...newCategory, fillRate: Number(e.target.value) })}
                     placeholder={`Default (${defaultFillRate}%)`}
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cpmRate">CPM Rate ($)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="cpmRate" className="text-xs">
+                    CPM Rate ($)
+                  </Label>
                   <Input
                     id="cpmRate"
                     type="number"
                     value={newCategory.cpmRate}
                     onChange={(e) => setNewCategory({ ...newCategory, cpmRate: Number(e.target.value) })}
+                    className="h-8 text-sm"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setIsAdding(false)}>
+              <div className="flex justify-end gap-2 mt-3">
+                <Button variant="outline" onClick={() => setIsAdding(false)} size="sm">
                   Cancel
                 </Button>
-                <Button onClick={handleAddCategory}>Add Category</Button>
+                <Button onClick={handleAddCategory} size="sm">
+                  Add Category
+                </Button>
               </div>
             </div>
           ) : (
-            <Button variant="outline" className="w-full flex items-center gap-2" onClick={() => setIsAdding(true)}>
+            <Button
+              variant="outline"
+              className="w-full flex items-center gap-2"
+              onClick={() => setIsAdding(true)}
+              size="sm"
+            >
               <PlusCircle className="h-4 w-4" />
               <span>Add VOD Category</span>
             </Button>

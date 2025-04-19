@@ -10,12 +10,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import type { RevenueState } from "@/lib/types"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { InfoIcon as InfoCircle } from "lucide-react"
+import { CitationLink, FormulaExplanation } from "@/components/citations"
 
 interface RevenueSettingsProps {
   revenue: RevenueState
   updateRevenue: (revenue: Partial<RevenueState>) => void
   globalFillRate: number
   updateGlobalFillRate: (value: number) => void
+  isEdited?: (fieldPath: string) => boolean
 }
 
 export function RevenueSettings({
@@ -23,6 +25,7 @@ export function RevenueSettings({
   updateRevenue,
   globalFillRate,
   updateGlobalFillRate,
+  isEdited,
 }: RevenueSettingsProps) {
   return (
     <Card className="border-slate-200 dark:border-slate-800">
@@ -89,7 +92,10 @@ export function RevenueSettings({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="averageDailyUniqueViewers">Average Daily Unique Viewers</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="averageDailyUniqueViewers">Average Daily Unique Viewers</Label>
+                        <CitationLink id="8" />
+                      </div>
                       <span className="text-sm font-mono">{revenue.averageDailyUniqueViewers.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-4">
@@ -108,7 +114,11 @@ export function RevenueSettings({
                         max={100000}
                         value={revenue.averageDailyUniqueViewers}
                         onChange={(e) => updateRevenue({ averageDailyUniqueViewers: Number(e.target.value) })}
-                        className="w-24"
+                        className={`w-24 ${
+                          isEdited && isEdited("revenue.averageDailyUniqueViewers")
+                            ? "font-bold"
+                            : "text-slate-500 italic"
+                        }`}
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Number of unique viewers per day</p>
@@ -116,7 +126,10 @@ export function RevenueSettings({
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="averageViewingHoursPerViewer">Average Viewing Hours per Viewer per Day</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="averageViewingHoursPerViewer">Average Viewing Hours per Viewer per Day</Label>
+                        <CitationLink id="9" />
+                      </div>
                       <span className="text-sm font-mono">{revenue.averageViewingHoursPerViewer.toFixed(1)} hours</span>
                     </div>
                     <Slider
@@ -134,7 +147,10 @@ export function RevenueSettings({
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="adSpotsPerHour">Ad Spots per Hour</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="adSpotsPerHour">Ad Spots per Hour</Label>
+                        <CitationLink id="10" />
+                      </div>
                       <span className="text-sm font-mono">{revenue.adSpotsPerHour.toFixed(1)} spots</span>
                     </div>
                     <Slider
@@ -171,7 +187,10 @@ export function RevenueSettings({
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="cpmRate">CPM Rate</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="cpmRate">CPM Rate</Label>
+                        <CitationLink id="11" />
+                      </div>
                       <span className="text-sm font-mono">${revenue.cpmRate.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center gap-4">
@@ -191,7 +210,9 @@ export function RevenueSettings({
                         step={0.01}
                         value={revenue.cpmRate}
                         onChange={(e) => updateRevenue({ cpmRate: Number(e.target.value) })}
-                        className="w-24"
+                        className={`w-24 ${
+                          isEdited && isEdited("revenue.cpmRate") ? "font-bold" : "text-slate-500 italic"
+                        }`}
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Cost per thousand impressions (CPM)</p>
@@ -286,6 +307,10 @@ export function RevenueSettings({
                       ? ` × ${revenue.targetDemographicValue.toFixed(2)} demographic value`
                       : ""}
                   </p>
+                  <FormulaExplanation
+                    formula="daily viewers × (watch min/60) × slots/hr × (CPM/1000) × 30 days"
+                    className="mt-2 p-2 bg-green-100/50 dark:bg-green-900/30 rounded"
+                  />
                 </div>
               </>
             )}
@@ -331,7 +356,10 @@ export function RevenueSettings({
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="ratePerBlock">Rate per 30-min Block</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="ratePerBlock">Rate per 30-min Block</Label>
+                        <CitationLink id="12" />
+                      </div>
                       <span className="text-sm font-mono">${revenue.ratePerBlock.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center gap-4">
@@ -351,7 +379,9 @@ export function RevenueSettings({
                         step={10}
                         value={revenue.ratePerBlock}
                         onChange={(e) => updateRevenue({ ratePerBlock: Number(e.target.value) })}
-                        className="w-24"
+                        className={`w-24 ${
+                          isEdited && isEdited("revenue.ratePerBlock") ? "font-bold" : "text-slate-500 italic"
+                        }`}
                       />
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Price charged per 30-minute block</p>
@@ -533,7 +563,10 @@ export function RevenueSettings({
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="vodCpmRate">VOD CPM Rate</Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="vodCpmRate">VOD CPM Rate</Label>
+                        <CitationLink id="11" />
+                      </div>
                       <span className="text-sm font-mono">${revenue.vodCpmRate.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center gap-4">
@@ -641,6 +674,10 @@ export function RevenueSettings({
                       ? ` × (1 + ${(revenue.vodPremiumPlacementRate * 100).toFixed(0)}% premium placement)`
                       : ""}
                   </p>
+                  <FormulaExplanation
+                    formula="archived minutes × (CPM/1000) × slots/hr × (1/60)"
+                    className="mt-2 p-2 bg-green-100/50 dark:bg-green-900/30 rounded"
+                  />
                 </div>
               </>
             )}

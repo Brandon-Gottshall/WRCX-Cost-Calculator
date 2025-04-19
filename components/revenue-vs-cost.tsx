@@ -138,7 +138,7 @@ export function RevenueVsCost({ revenue, costs }: RevenueVsCostProps) {
           </div>
         </div>
 
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg">
+        <div className="bg-slate-50 dark:bg-slate-900/50 p-2 sm:p-3 rounded-lg">
           <h3 className="text-lg font-semibold mb-2">Net Operating Profit</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

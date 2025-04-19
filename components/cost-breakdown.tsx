@@ -21,11 +21,25 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { Costs, SettingsState, Platform } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
+import { CitationLink, FormulaExplanation } from "@/components/citations"
 
 interface CostBreakdownProps {
   costs: Costs
   settings: SettingsState
   validationErrors?: boolean
+}
+
+// Helper function to calculate total live hours per day across all enabled channels
+function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
+  // If channels array doesn't exist or is empty, fall back to the global setting
+  if (!settings.channels || settings.channels.length === 0) {
+    return settings.hoursPerDayArchived || 0
+  }
+
+  // Sum up liveHours from all enabled channels
+  return settings.channels
+    .filter((channel) => channel.enabled !== false) // Only include enabled channels
+    .reduce((total, channel) => total + (channel.liveHours || 0), 0)
 }
 
 export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdownProps) {
@@ -37,6 +51,7 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
   })
 
   const totalMonthlyCost = costs.encoding + costs.storage + costs.delivery + costs.other
+  const totalLiveHoursPerDay = calculateTotalLiveHoursPerDay(settings)
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
@@ -61,7 +76,7 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
       icon: Database,
       color: "text-purple-500 dark:text-purple-400",
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
-      details: getStorageDetails(settings, costs),
+      details: getStorageDetails(settings, costs, totalLiveHoursPerDay),
       assumptions: getStorageAssumptions(settings),
     },
     {
@@ -119,7 +134,7 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
                 onOpenChange={() => toggleSection(item.name.toLowerCase())}
                 className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden"
               >
-                <div className="flex items-center justify-between p-4">
+                <div className="flex items-center justify-between p-2 sm:p-3">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-md ${item.bgColor}`}>
                       <item.icon className={`h-4 w-4 ${item.color}`} />
@@ -150,7 +165,7 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
                   </div>
                 </div>
                 <CollapsibleContent>
-                  <div className="px-4 pb-4 pt-0">
+                  <div className="px-2 sm:px-3 pb-2 sm:pb-3 pt-0">
                     <Separator className="mb-4" />
                     <div className="space-y-4">
                       {/* Cost Details */}
@@ -170,10 +185,58 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
                                 </Tooltip>
                               </TooltipProvider>
                             )}
+                            {detail.citation && <CitationLink id={detail.citation} />}
                           </div>
                           <span className="font-mono">{formatCurrency(detail.value)}</span>
                         </div>
                       ))}
+
+                      {/* Formula Explanation */}
+                      {item.name === "Encoding" && (
+                        <FormulaExplanation
+                          formula="24 h/day × 60 min/h × 30 days × (rate per min)"
+                          className="mt-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded"
+                        />
+                      )}
+
+                      {item.name === "Storage" && (
+                        <FormulaExplanation
+                          formula={`${totalLiveHoursPerDay} h/day × 60 min/h × ${settings.retentionWindow} days × (storage rate per min)`}
+                          className="mt-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded"
+                        />
+                      )}
+
+                      {item.name === "Delivery" && settings.platform !== "self-hosted" && (
+                        <FormulaExplanation
+                          formula="minutes delivered × rate/min × 24 h × 60 min × 30 d"
+                          className="mt-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded"
+                        />
+                      )}
+
+                      {/* Self-hosted bandwidth explanation */}
+                      {item.name === "Delivery" && settings.platform === "self-hosted" && (
+                        <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded text-xs text-slate-600 dark:text-slate-400">
+                          <p className="font-medium mb-1">Self-hosted bandwidth considerations:</p>
+                          <p>
+                            For self-hosted streaming without a CDN, delivery costs are fixed based on your internet
+                            connection rather than variable per-viewer costs. These fixed costs are included in the
+                            "Other" category.
+                          </p>
+                          <p className="mt-1">
+                            Your current setup can theoretically support{" "}
+                            <span className="font-medium">
+                              {Math.floor((settings.bandwidthCapacity || 1000) / 3)} concurrent viewers
+                            </span>{" "}
+                            at 1080p (assuming 3 Mbps per viewer).
+                          </p>
+                          {settings.videoCdnProvider && settings.videoCdnProvider !== "none" && (
+                            <p className="mt-1">
+                              Since you're using {settings.videoCdnProvider} as a CDN, variable delivery costs apply
+                              based on actual usage.
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       {/* Pricing Assumptions */}
                       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -186,14 +249,17 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
                               key={idx}
                               className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400"
                             >
-                              <span>{assumption.label}</span>
+                              <div className="flex items-center gap-1">
+                                <span>{assumption.label}</span>
+                                {assumption.citation && <CitationLink id={assumption.citation} />}
+                              </div>
                               <span className="font-mono">{assumption.value}</span>
                             </div>
                           ))}
                         </div>
                         {item.assumptions.length > 0 && (
                           <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                            <a href="#" className="flex items-center gap-1 hover:underline">
+                            <a href="#citations" className="flex items-center gap-1 hover:underline">
                               <span>View full pricing documentation</span>
                               <ExternalLink className="h-3 w-3" />
                             </a>
@@ -226,12 +292,16 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
 
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Annual Cost</span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-medium">Annual Cost</span>
+                <CitationLink id="12" />
+              </div>
               <span className="text-sm font-mono tabular-nums">{formatCurrency(totalMonthlyCost * 12)}</span>
             </div>
+            <FormulaExplanation formula="Monthly subtotal × 12" className="mt-1" />
           </div>
 
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg">
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-2 sm:p-3 rounded-lg">
             <h3 className="text-sm font-medium mb-2">Platform: {getPlatformName(settings.platform)}</h3>
             <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
               <p>
@@ -239,7 +309,12 @@ export function CostBreakdown({ costs, settings, validationErrors }: CostBreakdo
               </p>
               <p>• {settings.peakConcurrentViewers} peak viewers per channel</p>
               {settings.liveDvrEnabled && <p>• Live DVR enabled</p>}
-              {settings.vodEnabled && <p>• VOD archiving: {settings.hoursPerDayArchived} hours/day</p>}
+              {settings.vodEnabled && (
+                <p>• VOD archiving: {totalLiveHoursPerDay} hours/day (based on channel schedules)</p>
+              )}
+              {settings.platform === "self-hosted" && (
+                <p>• Bandwidth capacity: {settings.bandwidthCapacity || 1000} Mbps</p>
+              )}
             </div>
           </div>
         </div>
@@ -272,6 +347,7 @@ function getEncodingDetails(settings: SettingsState, costs: Costs) {
       label: "Live Encoding",
       value: costs.encoding * 0.7,
       tooltip: `Based on ${settings.channelCount} channel(s) at ${settings.encodingPreset} quality`,
+      citation: "1",
     })
   }
 
@@ -291,11 +367,11 @@ function getEncodingAssumptions(settings: SettingsState) {
 
   if (settings.platform === "mux") {
     assumptions.push(
-      { label: "1080p Live Encoding (Plus)", value: "$0.040/min" },
-      { label: "720p Live Encoding (Plus)", value: "$0.030/min" },
+      { label: "1080p Live Encoding (Plus)", value: "$0.040/min", citation: "1" },
+      { label: "720p Live Encoding (Plus)", value: "$0.030/min", citation: "1" },
     )
   } else if (settings.platform === "cloudflare") {
-    assumptions.push({ label: "Live Encoding", value: "Free" })
+    assumptions.push({ label: "Live Encoding", value: "Free", citation: "3" })
   } else if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
     assumptions.push(
       { label: "Server Compute Cost", value: "Based on hardware" },
@@ -306,14 +382,15 @@ function getEncodingAssumptions(settings: SettingsState) {
   return assumptions
 }
 
-function getStorageDetails(settings: SettingsState, costs: Costs) {
+function getStorageDetails(settings: SettingsState, costs: Costs, totalLiveHoursPerDay: number) {
   const details = []
 
   if (settings.vodEnabled && settings.streamEnabled !== false) {
     details.push({
       label: "VOD Storage",
       value: costs.storage * 0.6,
-      tooltip: `${settings.hoursPerDayArchived} hours/day × ${settings.retentionWindow} days retention`,
+      tooltip: `${totalLiveHoursPerDay} hours/day × ${settings.retentionWindow} days retention (based on channel schedules)`,
+      citation: "3",
     })
   }
 
@@ -332,9 +409,9 @@ function getStorageAssumptions(settings: SettingsState) {
   const assumptions = []
 
   if (settings.platform === "mux") {
-    assumptions.push({ label: "Storage Rate", value: "$0.003/min" })
+    assumptions.push({ label: "Storage Rate", value: "$0.003/min", citation: "1" })
   } else if (settings.platform === "cloudflare") {
-    assumptions.push({ label: "Storage Rate", value: "$0.005/min" })
+    assumptions.push({ label: "Storage Rate", value: "$0.005/min", citation: "3" })
   } else if (settings.platform === "self-hosted") {
     assumptions.push(
       { label: "Storage Type", value: settings.videoStorageStrategy || "local-nas" },
@@ -354,19 +431,39 @@ function getDeliveryDetails(settings: SettingsState, costs: Costs) {
   const details = []
 
   if (settings.streamEnabled !== false) {
-    details.push({
-      label: "Live Stream Delivery",
-      value: costs.delivery * 0.7,
-      tooltip: `${settings.channelCount} channel(s) × ${settings.peakConcurrentViewers} viewers`,
-    })
+    // For self-hosted without CDN, show $0 for delivery costs
+    if (settings.platform === "self-hosted" && (!settings.videoCdnProvider || settings.videoCdnProvider === "none")) {
+      details.push({
+        label: "Live Stream Delivery",
+        value: 0,
+        tooltip: `Fixed cost internet connection (included in "Other" costs)`,
+        citation: "2",
+      })
+    } else {
+      details.push({
+        label: "Live Stream Delivery",
+        value: costs.delivery * 0.7,
+        tooltip: `${settings.channelCount} channel(s) × ${settings.peakConcurrentViewers} viewers`,
+        citation: "2",
+      })
+    }
   }
 
   if (settings.vodEnabled && settings.streamEnabled !== false) {
-    details.push({
-      label: "VOD Delivery",
-      value: costs.delivery * 0.3,
-      tooltip: `Based on ${settings.peakConcurrentVodViewers} concurrent VOD viewers`,
-    })
+    // For self-hosted without CDN, show $0 for VOD delivery costs
+    if (settings.platform === "self-hosted" && (!settings.videoCdnProvider || settings.videoCdnProvider === "none")) {
+      details.push({
+        label: "VOD Delivery",
+        value: 0,
+        tooltip: `Fixed cost internet connection (included in "Other" costs)`,
+      })
+    } else {
+      details.push({
+        label: "VOD Delivery",
+        value: costs.delivery * 0.3,
+        tooltip: `Based on ${settings.peakConcurrentVodViewers} concurrent VOD viewers`,
+      })
+    }
   }
 
   return details
@@ -376,24 +473,25 @@ function getDeliveryAssumptions(settings: SettingsState) {
   const assumptions = []
 
   if (settings.platform === "mux") {
-    assumptions.push({ label: "Delivery Rate", value: "$0.00096/min" })
+    assumptions.push({ label: "Delivery Rate", value: "$0.00096/min", citation: "2" })
   } else if (settings.platform === "cloudflare") {
-    assumptions.push({ label: "Delivery Rate", value: "$0.001/min" })
+    assumptions.push({ label: "Delivery Rate", value: "$0.001/min", citation: "3" })
   } else if (settings.platform === "self-hosted") {
     if (settings.videoCdnProvider && settings.videoCdnProvider !== "none") {
       assumptions.push(
         { label: "CDN Provider", value: settings.videoCdnProvider },
-        { label: "CDN Egress Rate", value: `$${settings.videoCdnEgressRate}/GB` },
+        { label: "CDN Egress Rate", value: `$${settings.videoCdnEgressRate || 0.085}/GB`, citation: "5" },
       )
     } else {
       assumptions.push(
-        { label: "Direct Delivery", value: "ISP bandwidth limits apply" },
-        { label: "Bandwidth Capacity", value: `${settings.bandwidthCapacity} Mbps` },
+        { label: "Direct Delivery", value: "Fixed cost (ISP)" },
+        { label: "Bandwidth Capacity", value: `${settings.bandwidthCapacity || 1000} Mbps`, citation: "4" },
+        { label: "Max Concurrent Viewers", value: `~${Math.floor((settings.bandwidthCapacity || 1000) / 3)} at 1080p` },
       )
     }
   } else if (settings.platform === "hybrid") {
     assumptions.push(
-      { label: "Origin Egress", value: `$${settings.originEgressCost}/GB` },
+      { label: "Origin Egress", value: `$${settings.originEgressCost || 0.09}/GB`, citation: "5" },
       { label: "CDN Provider", value: settings.cloudProvider || "cloudflare" },
     )
   }
@@ -413,6 +511,25 @@ function getOtherDetails(settings: SettingsState, costs: Costs) {
           : settings.websiteCdnPlan === "business" || settings.cdnPlan === "business"
             ? 200
             : 0,
+    })
+  }
+
+  // Add internet costs for self-hosted
+  if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
+    const internetCost =
+      settings.internetOpexMo ||
+      (settings.peakConcurrentViewers > 300
+        ? 500
+        : settings.peakConcurrentViewers > 100
+          ? 300
+          : settings.peakConcurrentViewers > 30
+            ? 150
+            : 100)
+
+    details.push({
+      label: "Internet Connection",
+      value: internetCost,
+      tooltip: `Business-class internet with sufficient bandwidth for streaming`,
     })
   }
 
@@ -456,6 +573,7 @@ function getOtherDetails(settings: SettingsState, costs: Costs) {
       label: "Viewer Analytics",
       value: analyticsValue,
       tooltip: `${settings.viewerAnalytics} analytics service`,
+      citation: "7",
     })
   }
 
@@ -494,6 +612,25 @@ function getOtherAssumptions(settings: SettingsState) {
     })
   }
 
+  // Add internet assumptions for self-hosted
+  if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
+    assumptions.push({
+      label: "Internet Connection",
+      value: settings.internetOpexMo
+        ? `$${settings.internetOpexMo}/mo (custom)`
+        : settings.peakConcurrentViewers > 300
+          ? "$500/mo (enterprise)"
+          : settings.peakConcurrentViewers > 100
+            ? "$300/mo (business fiber)"
+            : "$100-150/mo (business cable)",
+    })
+
+    assumptions.push({
+      label: "Bandwidth Required",
+      value: `~${settings.peakConcurrentViewers * 3} Mbps peak`,
+    })
+  }
+
   if (settings.outboundEmail) {
     assumptions.push({
       label: "Email Cost",
@@ -517,6 +654,7 @@ function getOtherAssumptions(settings: SettingsState) {
                   : settings.viewerAnalytics === "self-host-grafana"
                     ? "$10/mo"
                     : "Free",
+        citation: "7",
       })
     }
 

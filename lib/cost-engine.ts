@@ -30,7 +30,20 @@ function minutesPerMonth(hoursPerDay: number): number {
 }
 
 function calculateStorageMinutes(hoursPerDayArchived: number, retentionWindow: number): number {
-  return hoursPerDayArchived * 60 * 24 * retentionWindow
+  return hoursPerDayArchived * 60 * retentionWindow
+}
+
+// Helper function to calculate total live hours per day across all enabled channels
+function calculateTotalLiveHoursPerDay(settings: SettingsState): number {
+  // If channels array doesn't exist or is empty, fall back to the global setting
+  if (!settings.channels || settings.channels.length === 0) {
+    return settings.hoursPerDayArchived || 0
+  }
+
+  // Sum up liveHours from all enabled channels
+  return settings.channels
+    .filter((channel) => channel.enabled !== false) // Only include enabled channels
+    .reduce((total, channel) => total + (channel.liveHours || 0), 0)
 }
 
 // Main cost calculation function
@@ -42,7 +55,10 @@ export function calculateCosts(settings: SettingsState): Costs {
 
   // Live streaming costs - only calculate if streaming is enabled
   if (settings.streamEnabled !== false) {
-    const liveMinutesPerMonth = minutesPerMonth(24) * settings.channelCount
+    // Count only enabled channels
+    const enabledChannelCount = settings.channels.filter((channel) => channel.enabled !== false).length
+    // Use enabledChannelCount instead of settings.channelCount
+    const liveMinutesPerMonth = minutesPerMonth(24) * enabledChannelCount
 
     // Calculate encoding costs
     if (settings.platform === "mux") {
@@ -54,11 +70,11 @@ export function calculateCosts(settings: SettingsState): Costs {
       encodingCost += liveMinutesPerMonth * 0.0035
     } else if (settings.platform === "self-hosted") {
       // Self-hosted encoding costs based on compute
-      encodingCost += 24 * 30 * SELF_HOSTED_PRICING.COMPUTE["t3.medium"] * settings.channelCount
+      encodingCost += 24 * 30 * SELF_HOSTED_PRICING.COMPUTE["t3.medium"] * enabledChannelCount
     } else if (settings.platform === "hybrid") {
       // Hybrid is a mix of self-hosted and cloud
       encodingCost += (liveMinutesPerMonth * 0.0035) / 2
-      encodingCost += (24 * 30 * SELF_HOSTED_PRICING.COMPUTE["t3.medium"] * settings.channelCount) / 2
+      encodingCost += (24 * 30 * SELF_HOSTED_PRICING.COMPUTE["t3.medium"] * enabledChannelCount) / 2
     }
 
     // Live delivery costs - FIXED: Calculate average concurrent viewers instead of using peak
@@ -67,21 +83,51 @@ export function calculateCosts(settings: SettingsState): Costs {
     const averageConcurrentViewers = Math.round(settings.peakConcurrentViewers * 0.4)
     const liveDeliveryMinutes = liveMinutesPerMonth * averageConcurrentViewers
 
+    // UPDATED: Handle delivery costs differently based on platform
     if (settings.platform === "mux") {
       deliveryCost += liveDeliveryMinutes * MUX_PRICING.DELIVERY
     } else if (settings.platform === "cloudflare") {
       deliveryCost += liveDeliveryMinutes * CLOUDFLARE_PRICING.DELIVERY
-    } else if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
-      // Convert minutes to GB for self-hosted egress
+    } else if (settings.platform === "self-hosted") {
+      // For self-hosted, only calculate delivery costs if using a CDN
+      if (settings.videoCdnProvider && settings.videoCdnProvider !== "none") {
+        // Convert minutes to GB for self-hosted egress
+        const estimatedGbPerMinute = 0.01 // Assuming 1080p average
+        const totalGbDelivered = liveDeliveryMinutes * estimatedGbPerMinute
+
+        // Apply the appropriate egress rate
+        const egressRate =
+          settings.videoCdnEgressRate ||
+          (settings.videoCdnProvider === "cloudfront"
+            ? 0.085
+            : settings.videoCdnProvider === "bunny"
+              ? 0.01
+              : settings.videoCdnProvider === "fastly"
+                ? 0.12
+                : 0.01)
+
+        deliveryCost += totalGbDelivered * egressRate
+      }
+      // If not using a CDN, no variable delivery costs - it's just fixed ISP costs
+      // which are accounted for in otherCost
+    } else if (settings.platform === "hybrid") {
+      // For hybrid, calculate delivery costs for the cloud portion
       const estimatedGbPerMinute = 0.01 // Assuming 1080p average
-      deliveryCost += liveDeliveryMinutes * estimatedGbPerMinute * SELF_HOSTED_PRICING.EGRESS
+      const totalGbDelivered = liveDeliveryMinutes * estimatedGbPerMinute * 0.5 // Assume 50% through cloud
+
+      // Apply the appropriate egress rate
+      const egressRate = settings.originEgressCost || 0.09
+      deliveryCost += totalGbDelivered * egressRate
     }
 
     // VOD storage costs - only if streaming is enabled and VOD is enabled
     if (settings.liveDvrEnabled && settings.vodEnabled) {
-      const vodMinutes = minutesPerMonth(settings.hoursPerDayArchived) * settings.channelCount
-      const storageMinutes =
-        calculateStorageMinutes(settings.hoursPerDayArchived, settings.retentionWindow) * settings.channelCount
+      // UPDATED: Use the total live hours from enabled channels instead of global setting
+      const totalLiveHoursPerDay = calculateTotalLiveHoursPerDay(settings)
+
+      // Calculate VOD minutes based on actual live content produced
+      const vodMinutes = minutesPerMonth(totalLiveHoursPerDay)
+      const storageMinutes = calculateStorageMinutes(totalLiveHoursPerDay, settings.retentionWindow)
 
       if (settings.vodProvider === "same-as-live" || settings.vodProvider === "mux") {
         storageCost += storageMinutes * MUX_PRICING.STORAGE
@@ -95,14 +141,32 @@ export function calculateCosts(settings: SettingsState): Costs {
       const averageConcurrentVodViewers = Math.round(settings.peakConcurrentVodViewers * 0.4)
       const deliveryMinutes = vodMinutes * averageConcurrentVodViewers
 
+      // UPDATED: Handle VOD delivery costs differently based on provider
       if (settings.vodProvider === "same-as-live" || settings.vodProvider === "mux") {
         deliveryCost += deliveryMinutes * MUX_PRICING.DELIVERY
       } else if (settings.vodProvider === "cloudflare") {
         deliveryCost += deliveryMinutes * CLOUDFLARE_PRICING.DELIVERY
       } else if (settings.vodProvider === "self-hosted-r2") {
-        // Convert minutes to GB for self-hosted egress
-        const estimatedGbPerMinute = 0.0075 // Assuming 720p average
-        deliveryCost += deliveryMinutes * estimatedGbPerMinute * SELF_HOSTED_PRICING.EGRESS
+        // For self-hosted VOD, only calculate delivery costs if using a CDN
+        if (settings.videoCdnProvider && settings.videoCdnProvider !== "none") {
+          // Convert minutes to GB for self-hosted egress
+          const estimatedGbPerMinute = 0.0075 // Assuming 720p average
+          const totalGbDelivered = deliveryMinutes * estimatedGbPerMinute
+
+          // Apply the appropriate egress rate
+          const egressRate =
+            settings.videoCdnEgressRate ||
+            (settings.videoCdnProvider === "cloudfront"
+              ? 0.085
+              : settings.videoCdnProvider === "bunny"
+                ? 0.01
+                : settings.videoCdnProvider === "fastly"
+                  ? 0.12
+                  : 0.01)
+
+          deliveryCost += totalGbDelivered * egressRate
+        }
+        // If not using a CDN, no variable delivery costs for VOD
       }
     }
   }
@@ -140,32 +204,33 @@ export function calculateCosts(settings: SettingsState): Costs {
     otherCost += 200 // Cloudflare Business
   }
 
-  // Video CDN costs for self-hosted/hybrid
+  // UPDATED: Add fixed internet costs for self-hosted
+  if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
+    // Add internet costs if not already accounted for
+    if (!settings.internetOpexMo) {
+      // Default internet costs based on bandwidth needs
+      const averageConcurrentViewers = Math.round(settings.peakConcurrentViewers * 0.4)
+      const estimatedBandwidthMbps = averageConcurrentViewers * 3 // Assume 3 Mbps per viewer
+
+      // Estimate internet costs based on required bandwidth
+      if (estimatedBandwidthMbps > 1000) {
+        otherCost += 500 // Enterprise fiber
+      } else if (estimatedBandwidthMbps > 500) {
+        otherCost += 300 // Business fiber
+      } else if (estimatedBandwidthMbps > 100) {
+        otherCost += 150 // Business cable/fiber
+      } else {
+        otherCost += 100 // Standard business internet
+      }
+    }
+  }
+
+  // Video CDN costs for self-hosted/hybrid - MOVED to delivery costs section above
   if (
     (settings.platform === "self-hosted" || settings.platform === "hybrid") &&
     settings.videoCdnProvider &&
     settings.videoCdnProvider !== "none"
   ) {
-    // Calculate video CDN costs based on delivery volume
-    // FIXED: Use average concurrent viewers instead of peak
-    const averageConcurrentViewers = Math.round(settings.peakConcurrentViewers * 0.4)
-    const estimatedGbPerViewer = 0.3 // ~0.3GB per hour per viewer at 1080p
-    const viewerHours = averageConcurrentViewers * settings.channelCount * 24 * 30
-    const estimatedGbPerMonth = viewerHours * estimatedGbPerViewer
-
-    // Apply the appropriate egress rate
-    const egressRate =
-      settings.videoCdnEgressRate ||
-      (settings.videoCdnProvider === "cloudfront"
-        ? 0.085
-        : settings.videoCdnProvider === "bunny"
-          ? 0.01
-          : settings.videoCdnProvider === "fastly"
-            ? 0.12
-            : 0.01)
-
-    deliveryCost += estimatedGbPerMonth * egressRate
-
     // Add base costs for premium CDN plans
     if (settings.videoCdnPlan === "premium") {
       otherCost += 50 // Premium tier base cost

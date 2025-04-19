@@ -15,6 +15,8 @@ import { calculateHardwareRequirements, getHardwareOptions } from "@/lib/hardwar
 import { formatCurrency } from "@/lib/utils"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { ChevronDown } from "lucide-react"
 
 // Define ValidationResult and getFieldValidation
 interface ValidationResult {
@@ -67,11 +69,11 @@ export function SettingsCard({
   return (
     <div className="mb-6">
       <Card className="overflow-hidden border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30">
+        <CardHeader className="pb-2 pt-4 px-3 sm:px-4 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30">
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="pt-4 px-3 sm:px-4 pb-3 space-y-6">
           {/* Each settings component is wrapped in its own motion.div for independent animation */}
           {type === "stream" && (
             <motion.div
@@ -924,6 +926,7 @@ function HardwareHostingSettings({
   const hardwareRequirements = calculateHardwareRequirements(settings)
   const hardwareOptions = getHardwareOptions()
   const [hardwareMode, setHardwareMode] = React.useState<"own" | "rent">(settings.hardwareMode || "own")
+  const [isOpen, setIsOpen] = React.useState(false)
 
   // Calculate amortized monthly cost
   const calculateAmortizedCost = (cost: number, months: number) => {
@@ -1066,290 +1069,302 @@ function HardwareHostingSettings({
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label>Hardware Acquisition Mode</Label>
-        <div className="grid grid-cols-2 gap-4">
-          <Button
-            type="button"
-            variant={hardwareMode === "own" ? "default" : "outline"}
-            className="w-full"
-            onClick={() => {
-              setHardwareMode("own")
-              updateSettings({ hardwareMode: "own" })
-            }}
-          >
-            Own Hardware
-          </Button>
-          <Button
-            type="button"
-            variant={hardwareMode === "rent" ? "default" : "outline"}
-            className="w-full"
-            onClick={() => {
-              setHardwareMode("rent")
-              updateSettings({ hardwareMode: "rent" })
-            }}
-          >
-            Rent / Colocate
-          </Button>
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Choose whether you'll purchase hardware or rent/colocate
-        </p>
+      <div className="mt-4 text-sm font-medium text-center">
+        Total Monthly Cost: <span className="font-bold">{formatCurrency(totalMonthlyCost)}</span>
       </div>
 
-      {hardwareMode === "own" ? (
-        <>
+      <Collapsible className="border rounded-md mt-4" open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="flex w-full justify-between p-4 font-medium hover:bg-slate-50 dark:hover:bg-slate-800/50">
+          <span>Hardware & Hosting Settings</span>
+          <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="px-4 pb-4 pt-0">
           <div className="space-y-2">
+            <Label>Hardware Acquisition Mode</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                type="button"
+                variant={hardwareMode === "own" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => {
+                  setHardwareMode("own")
+                  updateSettings({ hardwareMode: "own" })
+                }}
+              >
+                Own Hardware
+              </Button>
+              <Button
+                type="button"
+                variant={hardwareMode === "rent" ? "default" : "outline"}
+                className="w-full"
+                onClick={() => {
+                  setHardwareMode("rent")
+                  updateSettings({ hardwareMode: "rent" })
+                }}
+              >
+                Rent / Colocate
+              </Button>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Choose whether you'll purchase hardware or rent/colocate
+            </p>
+          </div>
+
+          {hardwareMode === "own" ? (
+            <>
+              <div className="space-y-2 mt-6">
+                <div className="flex justify-between">
+                  <Label htmlFor="capEx">Cap-ex $ (Hardware Cost)</Label>
+                  <span className="text-sm font-mono">${settings.capEx || 0}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Slider
+                    id="capEx"
+                    min={0}
+                    max={5000}
+                    step={100}
+                    value={[settings.capEx || 1299]}
+                    onValueChange={(value) => updateSettings({ capEx: value[0] })}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={settings.capEx || 1299}
+                    onChange={(e) => updateSettings({ capEx: Number(e.target.value) || 0 })}
+                    className="w-24"
+                  />
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Upfront purchase price of your streaming server
+                </p>
+              </div>
+
+              <div className="space-y-2 mt-6">
+                <div className="flex justify-between">
+                  <Label htmlFor="amortMonths">Amortisation (mo)</Label>
+                  <span className="text-sm font-mono">{settings.amortMonths || 36} months</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Slider
+                    id="amortMonths"
+                    min={12}
+                    max={60}
+                    step={6}
+                    value={[settings.amortMonths || 36]}
+                    onValueChange={(value) => updateSettings({ amortMonths: value[0] })}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={settings.amortMonths || 36}
+                    onChange={(e) => updateSettings({ amortMonths: Number(e.target.value) || 36 })}
+                    className="w-24"
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+                  <span>Number of months to spread cap-ex cost</span>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-6">
+                <div className="flex justify-between">
+                  <Label htmlFor="serverOpexMo">Server Opex $/mo</Label>
+                  <span className="text-sm font-mono">${settings.serverOpexMo || 0}</span>
+                </div>
+                <Input
+                  id="serverOpexMo"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={settings.serverOpexMo || 0}
+                  disabled
+                  className="bg-slate-100 dark:bg-slate-800"
+                />
+                <p className="text-sm text-slate-500 dark:text-slate-400">Cap-ex ÷ Amortisation</p>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2 mt-6">
+              <div className="flex justify-between">
+                <Label htmlFor="monthlyRentalCost">Monthly Rental/Colocation Cost ($)</Label>
+                <span className="text-sm font-mono">${settings.monthlyRentalCost || 0}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <Slider
+                  id="monthlyRentalCost"
+                  min={0}
+                  max={500}
+                  step={10}
+                  value={[settings.monthlyRentalCost || 100]}
+                  onValueChange={(value) => updateSettings({ monthlyRentalCost: value[0] })}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  value={settings.monthlyRentalCost || 100}
+                  onChange={(e) => updateSettings({ monthlyRentalCost: Number(e.target.value) || 0 })}
+                  className="w-24"
+                />
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Monthly cost for renting hardware or colocation (MacStadium: ~$100-200/mo)
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2 mt-6">
             <div className="flex justify-between">
-              <Label htmlFor="capEx">Cap-ex $ (Hardware Cost)</Label>
-              <span className="text-sm font-mono">${settings.capEx || 0}</span>
+              <Label htmlFor="wattage">Wattage (W)</Label>
+              <span className="text-sm font-mono">{settings.wattage || 0} W</span>
             </div>
             <div className="flex items-center gap-4">
               <Slider
-                id="capEx"
+                id="wattage"
                 min={0}
-                max={5000}
-                step={100}
-                value={[settings.capEx || 1299]}
-                onValueChange={(value) => updateSettings({ capEx: value[0] })}
+                max={100}
+                step={1}
+                value={[settings.wattage || 25]}
+                onValueChange={(value) => updateSettings({ wattage: value[0] })}
                 className="flex-1"
               />
               <Input
                 type="number"
                 min={0}
-                value={settings.capEx || 1299}
-                onChange={(e) => updateSettings({ capEx: Number(e.target.value) || 0 })}
+                value={settings.wattage || 25}
+                onChange={(e) => updateSettings({ wattage: Number(e.target.value) || 0 })}
                 className="w-24"
               />
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Upfront purchase price of your streaming server
+              Average watts your server draws continuously (Mac Mini: ~25W, Mac Studio: ~45W)
             </p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <div className="flex justify-between">
-              <Label htmlFor="amortMonths">Amortisation (mo)</Label>
-              <span className="text-sm font-mono">{settings.amortMonths || 36} months</span>
+              <Label htmlFor="powerRate">Power $/kWh</Label>
+              <span className="text-sm font-mono">${settings.powerRate || 0}</span>
             </div>
             <div className="flex items-center gap-4">
               <Slider
-                id="amortMonths"
-                min={12}
-                max={60}
-                step={6}
-                value={[settings.amortMonths || 36]}
-                onValueChange={(value) => updateSettings({ amortMonths: value[0] })}
+                id="powerRate"
+                min={0}
+                max={0.5}
+                step={0.01}
+                value={[settings.powerRate || 0.144]}
+                onValueChange={(value) => updateSettings({ powerRate: value[0] })}
                 className="flex-1"
               />
               <Input
                 type="number"
-                min={1}
-                value={settings.amortMonths || 36}
-                onChange={(e) => updateSettings({ amortMonths: Number(e.target.value) || 36 })}
+                min={0}
+                step={0.001}
+                value={settings.powerRate || 0.144}
+                onChange={(e) => updateSettings({ powerRate: Number(e.target.value) || 0 })}
                 className="w-24"
               />
             </div>
-            <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>Number of months to spread cap-ex cost</span>
-            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Cost you pay per kilowatt-hour of electricity</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 mt-6">
             <div className="flex justify-between">
-              <Label htmlFor="serverOpexMo">Server Opex $/mo</Label>
-              <span className="text-sm font-mono">${settings.serverOpexMo || 0}</span>
+              <Label htmlFor="electricityOpexMo">Electricity $/mo</Label>
+              <span className="text-sm font-mono">${settings.electricityOpexMo || 0}</span>
             </div>
             <Input
-              id="serverOpexMo"
+              id="electricityOpexMo"
               type="number"
               min={0}
               step={0.01}
-              value={settings.serverOpexMo || 0}
+              value={settings.electricityOpexMo || 0}
               disabled
               className="bg-slate-100 dark:bg-slate-800"
             />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Cap-ex ÷ Amortisation</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Wattage × 24h × 30d × Power $/kWh ÷ 1000</p>
           </div>
-        </>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <Label htmlFor="monthlyRentalCost">Monthly Rental/Colocation Cost ($)</Label>
-            <span className="text-sm font-mono">${settings.monthlyRentalCost || 0}</span>
+
+          <div className="space-y-2 mt-6">
+            <div className="flex justify-between">
+              <Label htmlFor="internetOpexMo">Internet $/mo</Label>
+              <span className="text-sm font-mono">${settings.internetOpexMo || 0}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Slider
+                id="internetOpexMo"
+                min={0}
+                max={500}
+                step={10}
+                value={[settings.internetOpexMo || 99]}
+                onValueChange={(value) => updateSettings({ internetOpexMo: value[0] })}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={settings.internetOpexMo || 99}
+                onChange={(e) => updateSettings({ internetOpexMo: Number(e.target.value) || 0 })}
+                className="w-24"
+              />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Monthly cost of your 1 Gbps or higher business line
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Slider
-              id="monthlyRentalCost"
-              min={0}
-              max={500}
-              step={10}
-              value={[settings.monthlyRentalCost || 100]}
-              onValueChange={(value) => updateSettings({ monthlyRentalCost: value[0] })}
-              className="flex-1"
-            />
-            <Input
-              type="number"
-              min={0}
-              value={settings.monthlyRentalCost || 100}
-              onChange={(e) => updateSettings({ monthlyRentalCost: Number(e.target.value) || 0 })}
-              className="w-24"
-            />
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Monthly cost for renting hardware or colocation (MacStadium: ~$100-200/mo)
-          </p>
-        </div>
-      )}
 
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="wattage">Wattage (W)</Label>
-          <span className="text-sm font-mono">{settings.wattage || 0} W</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Slider
-            id="wattage"
-            min={0}
-            max={100}
-            step={1}
-            value={[settings.wattage || 25]}
-            onValueChange={(value) => updateSettings({ wattage: value[0] })}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            min={0}
-            value={settings.wattage || 25}
-            onChange={(e) => updateSettings({ wattage: Number(e.target.value) || 0 })}
-            className="w-24"
-          />
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Average watts your server draws continuously (Mac Mini: ~25W, Mac Studio: ~45W)
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="powerRate">Power $/kWh</Label>
-          <span className="text-sm font-mono">${settings.powerRate || 0}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Slider
-            id="powerRate"
-            min={0}
-            max={0.5}
-            step={0.01}
-            value={[settings.powerRate || 0.144]}
-            onValueChange={(value) => updateSettings({ powerRate: value[0] })}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            min={0}
-            step={0.001}
-            value={settings.powerRate || 0.144}
-            onChange={(e) => updateSettings({ powerRate: Number(e.target.value) || 0 })}
-            className="w-24"
-          />
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Cost you pay per kilowatt-hour of electricity</p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="electricityOpexMo">Electricity $/mo</Label>
-          <span className="text-sm font-mono">${settings.electricityOpexMo || 0}</span>
-        </div>
-        <Input
-          id="electricityOpexMo"
-          type="number"
-          min={0}
-          step={0.01}
-          value={settings.electricityOpexMo || 0}
-          disabled
-          className="bg-slate-100 dark:bg-slate-800"
-        />
-        <p className="text-sm text-slate-500 dark:text-slate-400">Wattage × 24h × 30d × Power $/kWh ÷ 1000</p>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label htmlFor="internetOpexMo">Internet $/mo</Label>
-          <span className="text-sm font-mono">${settings.internetOpexMo || 0}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Slider
-            id="internetOpexMo"
-            min={0}
-            max={500}
-            step={10}
-            value={[settings.internetOpexMo || 99]}
-            onValueChange={(value) => updateSettings({ internetOpexMo: value[0] })}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            min={0}
-            value={settings.internetOpexMo || 99}
-            onChange={(e) => updateSettings({ internetOpexMo: Number(e.target.value) || 0 })}
-            className="w-24"
-          />
-        </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Monthly cost of your 1 Gbps or higher business line
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label htmlFor="networkSwitchNeeded">Network Switch Needed?</Label>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Include network switch in cost calculation</p>
-        </div>
-        <Switch
-          id="networkSwitchNeeded"
-          checked={settings.networkSwitchNeeded}
-          onCheckedChange={(checked) => updateSettings({ networkSwitchNeeded: checked })}
-        />
-      </div>
-
-      {settings.networkSwitchNeeded && (
-        <div className="space-y-2 pl-4 border-l-2 border-blue-200 dark:border-blue-900">
-          <div className="flex justify-between">
-            <Label htmlFor="networkSwitchCost">Network Switch Cost ($)</Label>
-            <span className="text-sm font-mono">${settings.networkSwitchCost || 0}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Slider
-              id="networkSwitchCost"
-              min={0}
-              max={1000}
-              step={50}
-              value={[settings.networkSwitchCost || 200]}
-              onValueChange={(value) => updateSettings({ networkSwitchCost: value[0] })}
-              className="flex-1"
-            />
-            <Input
-              type="number"
-              min={0}
-              value={settings.networkSwitchCost || 200}
-              onChange={(e) => updateSettings({ networkSwitchCost: Number(e.target.value) || 0 })}
-              className="w-24"
+          <div className="flex items-center justify-between mt-6">
+            <div className="space-y-0.5">
+              <Label htmlFor="networkSwitchNeeded">Network Switch Needed?</Label>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Include network switch in cost calculation</p>
+            </div>
+            <Switch
+              id="networkSwitchNeeded"
+              checked={settings.networkSwitchNeeded}
+              onCheckedChange={(checked) => updateSettings({ networkSwitchNeeded: checked })}
             />
           </div>
-          <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-            <span>Basic 1GbE: ~$50-100, 10GbE: ~$200-500</span>
-            <span className="font-mono">
-              ≈{" "}
-              {formatCurrency(
-                calculateAmortizedCost(settings.networkSwitchCost || 200, settings.amortizationMonths || 24),
-              )}
-              /mo
-            </span>
-          </div>
-        </div>
-      )}
+
+          {settings.networkSwitchNeeded && (
+            <div className="space-y-2 pl-4 border-l-2 border-blue-200 dark:border-blue-900 mt-4">
+              <div className="flex justify-between">
+                <Label htmlFor="networkSwitchCost">Network Switch Cost ($)</Label>
+                <span className="text-sm font-mono">${settings.networkSwitchCost || 0}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <Slider
+                  id="networkSwitchCost"
+                  min={0}
+                  max={1000}
+                  step={50}
+                  value={[settings.networkSwitchCost || 200]}
+                  onValueChange={(value) => updateSettings({ networkSwitchCost: value[0] })}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  min={0}
+                  value={settings.networkSwitchCost || 200}
+                  onChange={(e) => updateSettings({ networkSwitchCost: Number(e.target.value) || 0 })}
+                  className="w-24"
+                />
+              </div>
+              <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+                <span>Basic 1GbE: ~$50-100, 10GbE: ~$200-500</span>
+                <span className="font-mono">
+                  ≈{" "}
+                  {formatCurrency(
+                    calculateAmortizedCost(settings.networkSwitchCost || 200, settings.amortizationMonths || 24),
+                  )}
+                  /mo
+                </span>
+              </div>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
         <h3 className="text-md font-semibold mb-2">Total Monthly Hardware & Operating Cost</h3>

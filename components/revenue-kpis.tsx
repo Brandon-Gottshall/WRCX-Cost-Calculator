@@ -58,7 +58,7 @@ export function RevenueKPIs({ revenue }: RevenueKPIsProps) {
           key={kpi.title}
           className={`border-slate-200 dark:border-slate-800 h-full ${kpi.isTotal ? "border-l-4 border-l-amber-500 dark:border-l-amber-400" : ""}`}
         >
-          <CardContent className="p-5">
+          <CardContent className="p-2 sm:p-3">
             <div className="flex items-center gap-3 mb-3">
               <div className={`p-2 rounded-md ${kpi.bgColor}`}>
                 <kpi.icon className={`h-4 w-4 ${kpi.color}`} />

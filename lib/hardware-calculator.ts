@@ -144,14 +144,17 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
         networkInterface as keyof typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL
       ]?.[settings.encodingPreset as keyof (typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL)["1gbe"]] || 20 // Default to 20 if not found
 
+    // Count only enabled channels
+    const enabledChannelCount = settings.channels.filter((channel) => channel.enabled !== false).length
+
     if (encodingPresetReqs) {
-      requirements.cpuCores += Math.ceil(encodingPresetReqs.cpuCores * settings.channelCount * encodingMultiplier)
-      requirements.memoryGB += Math.ceil(encodingPresetReqs.memoryGB * settings.channelCount * encodingMultiplier)
+      requirements.cpuCores += Math.ceil(encodingPresetReqs.cpuCores * enabledChannelCount * encodingMultiplier)
+      requirements.memoryGB += Math.ceil(encodingPresetReqs.memoryGB * enabledChannelCount * encodingMultiplier)
 
       // Calculate network requirements based on the selected network interface
       const viewersPerChannel = Math.min(settings.peakConcurrentViewers, maxViewersPerChannel)
       requirements.networkMbps += Math.ceil(
-        encodingPresetReqs.networkMbps * viewersPerChannel * settings.channelCount * encodingMultiplier,
+        encodingPresetReqs.networkMbps * viewersPerChannel * enabledChannelCount * encodingMultiplier,
       )
 
       // Calculate max viewers based on network capacity
@@ -159,7 +162,7 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
       const maxViewersTotal = Math.floor(
         (networkCapacity - BASE_REQUIREMENTS.NEXT_SERVER.networkMbps) / totalBandwidthPerViewer,
       )
-      requirements.maxViewers = Math.floor(maxViewersTotal / settings.channelCount)
+      requirements.maxViewers = Math.floor(maxViewersTotal / enabledChannelCount || 1) // Avoid division by zero
     }
 
     // Storage for VOD content if enabled
@@ -167,7 +170,7 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
       const isUHD = settings.encodingPreset.includes("4k")
       const storagePerHour = isUHD ? BASE_REQUIREMENTS.STORAGE_PER_HOUR.UHD : BASE_REQUIREMENTS.STORAGE_PER_HOUR.HD
       requirements.storageGB += Math.ceil(
-        storagePerHour * settings.hoursPerDayArchived * settings.retentionWindow * settings.channelCount,
+        storagePerHour * settings.hoursPerDayArchived * settings.retentionWindow * enabledChannelCount,
       )
     }
 

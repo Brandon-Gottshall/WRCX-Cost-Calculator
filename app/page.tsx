@@ -224,7 +224,6 @@ export default function CostCalculator() {
     { id: "storage", label: "Storage & DB" },
     { id: "email", label: "Email" },
     { id: "cdn", label: "CDN", disabled: settings.platform === "mux" && !settings.liveDvrEnabled },
-    { id: "hardware", label: "Hardware & Hosting" },
     { id: "analytics", label: "Analytics" },
     { id: "revenue", label: "Revenue" }, // Add the revenue tab
   ]
@@ -233,24 +232,24 @@ export default function CostCalculator() {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
       {/* Header */}
       <header className="sticky top-0 z-10 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white font-bold rounded-lg p-2">WRCX</div>
-            <Separator orientation="vertical" className="h-8" />
-            <h1 className="text-xl font-semibold tracking-tight">Stream & VOD Cost Calculator</h1>
+        <div className="container max-w-5xl mx-auto px-2 sm:px-3 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-blue-600 text-white font-bold rounded-lg p-1.5 sm:p-2">WRCX</div>
+            <Separator orientation="vertical" className="h-6 sm:h-8" />
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Stream & VOD Cost Calculator</h1>
           </div>
           <Button variant="outline" size="sm" className="gap-2">
             <Download size={16} />
-            <span>Export</span>
+            <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Left Column - Settings (60%) */}
-          <div className="lg:col-span-3 space-y-8">
+      <main className="flex-1 container max-w-5xl mx-auto px-2 sm:px-3 py-4 sm:py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 sm:gap-6">
+          {/* Left Column - Settings (100% on smaller screens, 60% on xl screens) */}
+          <div className="xl:col-span-3 space-y-4 sm:space-y-6">
             <PlatformPicker
               selectedPlatform={settings.platform}
               onChange={(platform) => updateSettings({ platform })}
@@ -266,7 +265,7 @@ export default function CostCalculator() {
 
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <AnimatePresence mode="popLayout">
                 {activeTab === "live" && (
                   <SettingsCard
@@ -368,19 +367,6 @@ export default function CostCalculator() {
                   />
                 )}
 
-                {activeTab === "hardware" && (
-                  <SettingsCard
-                    key="hardware-hosting"
-                    title="Hardware & Hosting"
-                    description="Configure physical infrastructure requirements"
-                    settings={settings}
-                    updateSettings={updateSettings}
-                    type="hardware-hosting"
-                    validationResults={validationResults || []}
-                    isEdited={isFieldEdited}
-                  />
-                )}
-
                 {activeTab === "analytics" && (
                   <SettingsCard
                     key="analytics"
@@ -410,11 +396,26 @@ export default function CostCalculator() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Add Hardware & Hosting section outside of tabs, always visible */}
+            <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+              <h2 className="text-xl font-semibold mb-4">Hardware & Hosting</h2>
+              <SettingsCard
+                key="hardware-hosting"
+                title="Hardware & Hosting"
+                description="Configure physical infrastructure requirements"
+                settings={settings}
+                updateSettings={updateSettings}
+                type="hardware-hosting"
+                validationResults={validationResults || []}
+                isEdited={isFieldEdited}
+              />
+            </div>
           </div>
 
-          {/* Right Column - Cost Preview (40%) */}
-          <div className="lg:col-span-2">
-            <div className="sticky top-24 space-y-6">
+          {/* Right Column - Cost Preview (100% on smaller screens, 40% on xl screens) */}
+          <div className="xl:col-span-2">
+            <div className="space-y-4 sm:space-y-6">
               <CostPreview costs={costs} settings={settings} revenue={revenueCalculations} />
 
               {/* Validation warning for cost preview */}
@@ -433,7 +434,7 @@ export default function CostCalculator() {
               )}
 
               {/* Revenue KPIs */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <RevenueKPIs revenue={revenueCalculations} />
               </div>
 
@@ -444,7 +445,7 @@ export default function CostCalculator() {
         </div>
 
         {/* Research footnote */}
-        <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger className="flex items-center gap-1 mx-auto">
@@ -463,11 +464,11 @@ export default function CostCalculator() {
       </main>
 
       {/* Footer / Actions */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md py-4">
-        <div className="container mx-auto px-4 flex justify-between items-center">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md py-3">
+        <div className="container max-w-5xl mx-auto px-2 sm:px-3 flex justify-between items-center">
           <Button variant="outline" onClick={resetSettings} className="gap-2">
             <RefreshCw size={16} />
-            <span>Reset</span>
+            <span className="hidden sm:inline">Reset</span>
           </Button>
 
           <Button
@@ -476,7 +477,7 @@ export default function CostCalculator() {
             disabled={hasValidationErrors && hasValidationErrors(validationResults)}
           >
             <Copy size={16} />
-            <span>Copy to Estimate</span>
+            <span className="hidden sm:inline">Copy to Estimate</span>
           </Button>
         </div>
       </footer>
