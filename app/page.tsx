@@ -26,8 +26,10 @@ import type {
   Platform,
   ChannelStatistics as ChannelStatsType,
   VodStatistics as VodStatsType,
+  RevenueState,
 } from "@/lib/types"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Info } from "lucide-react"
+import { UnifiedHardwareRecommendations } from "@/components/unified-hardware-recommendations"
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -128,6 +130,18 @@ export default function Home() {
     setEditedFields(newEditedFields)
   }
 
+  // Function to update revenue settings
+  const updateRevenue = (revenueUpdates: Partial<RevenueState>) => {
+    updateSettings({
+      revenue: { ...settings.revenue, ...revenueUpdates },
+    })
+  }
+
+  // Function to update global fill rate
+  const updateGlobalFillRate = (value: number) => {
+    updateSettings({ globalFillRate: value })
+  }
+
   // Check if a field has been edited
   const isEdited = (fieldPath: string) => {
     return editedFields[fieldPath] === true
@@ -156,7 +170,12 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column - Settings */}
           <div className="lg:col-span-2 space-y-6">
-            <PlatformPicker platform={settings.platform} onChange={handlePlatformChange} />
+            <PlatformPicker
+              platform={settings.platform}
+              onChange={handlePlatformChange}
+              settings={settings}
+              updateSettings={updateSettings}
+            />
 
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
@@ -270,29 +289,18 @@ export default function Home() {
             )}
 
             {activeTab === "hardware" && (
-              <>
-                <SettingsCard
-                  title="Hardware & Hosting"
-                  description="Configure hardware and hosting settings"
-                  settings={settings}
-                  updateSettings={updateSettings}
-                  type="hardware-hosting"
-                  validationResults={validationResults}
-                  isEdited={isEdited}
-                />
-
-                {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
-                  <SettingsCard
-                    title="Self-Hosted Configuration"
-                    description="Configure self-hosted streaming settings"
-                    settings={settings}
-                    updateSettings={updateSettings}
-                    type="self-hosted-config"
-                    validationResults={validationResults}
-                    isEdited={isEdited}
-                  />
-                )}
-              </>
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Hardware Configuration</h3>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Hardware recommendations are now displayed in the right sidebar for easier access. You can
+                      configure your infrastructure settings there.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {activeTab === "analytics" && (
@@ -309,7 +317,13 @@ export default function Home() {
 
             {activeTab === "revenue" && (
               <>
-                <RevenueSettings settings={settings} updateSettings={updateSettings} />
+                <RevenueSettings
+                  revenue={settings.revenue}
+                  updateRevenue={updateRevenue}
+                  globalFillRate={settings.globalFillRate}
+                  updateGlobalFillRate={updateGlobalFillRate}
+                  isEdited={isEdited}
+                />
                 <RevenueKpis revenue={revenue} />
                 <RevenueVsCost revenue={revenue} costs={costs} />
               </>
@@ -320,9 +334,28 @@ export default function Home() {
             <Citations platform={settings.platform} />
           </div>
 
-          {/* Right column - Cost Preview */}
+          {/* Right column - Hardware Recommendations and Cost Preview */}
           <div className="space-y-6">
-            <CostPreview costs={costs} settings={settings} />
+            {/* Hardware Recommendations - now always visible in the right column */}
+            {settings.platform === "self-hosted" || settings.platform === "hybrid" ? (
+              <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+            ) : (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Managed Infrastructure</h3>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      {settings.platform === "mux" ? "Mux" : "Cloudflare Stream"} provides fully managed infrastructure
+                      for your streaming needs. No hardware configuration is required.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Cost Preview */}
+            <CostPreview costs={costs} settings={settings} revenue={revenue} />
             <CostBreakdown costs={costs} settings={settings} />
           </div>
         </div>

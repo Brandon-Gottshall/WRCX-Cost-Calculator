@@ -1,23 +1,25 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, ArrowRight } from "lucide-react"
+import { useEffect } from "react"
 import type { Platform, SettingsState } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Separator } from "@/components/ui/separator"
 
 interface PlatformPickerProps {
-  selectedPlatform: Platform
+  platform: Platform
   onChange: (platform: Platform) => void
-  settings: SettingsState
-  updateSettings: (settings: Partial<SettingsState>) => void
+  settings?: SettingsState
+  updateSettings?: (settings: Partial<SettingsState>) => void
 }
 
-export function PlatformPicker({ selectedPlatform, onChange, settings, updateSettings }: PlatformPickerProps) {
+export function PlatformPicker({ platform, onChange, settings, updateSettings }: PlatformPickerProps) {
+  // Debug: Log the platform value when it changes
+  useEffect(() => {
+    console.log("Selected platform:", platform)
+  }, [platform])
+
   const platforms: { id: Platform; label: string }[] = [
     { id: "mux", label: "Mux" },
     { id: "cloudflare", label: "Cloudflare Stream" },
@@ -31,16 +33,19 @@ export function PlatformPicker({ selectedPlatform, onChange, settings, updateSet
 
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <h2 className="text-lg font-semibold mb-4">Choose Your Platform</h2>
+        {/* Debug: Display the current platform value */}
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Current selection: <span className="font-bold">{platform || "none"}</span>
+        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <motion.div
             onClick={() => onChange("mux")}
             className={cn(
               "p-4 rounded-lg cursor-pointer transition-all",
-              "border-2",
-              selectedPlatform === "mux"
-                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                : "border-blue-100 dark:border-blue-900/30 bg-blue-50 dark:bg-blue-950/20 hover:border-blue-200 dark:hover:border-blue-800/50",
+              platform === "mux"
+                ? "border-2 border-blue-500 bg-blue-100 dark:bg-blue-900/30"
+                : "border border-blue-100 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/10 hover:border-blue-200 dark:hover:border-blue-800/50",
             )}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -56,10 +61,9 @@ export function PlatformPicker({ selectedPlatform, onChange, settings, updateSet
             onClick={() => onChange("cloudflare")}
             className={cn(
               "p-4 rounded-lg cursor-pointer transition-all",
-              "border-2",
-              selectedPlatform === "cloudflare"
-                ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
-                : "border-purple-100 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-950/20 hover:border-purple-200 dark:hover:border-purple-800/50",
+              platform === "cloudflare"
+                ? "border-2 border-purple-500 bg-purple-100 dark:bg-purple-900/30"
+                : "border border-purple-100 dark:border-purple-900/30 bg-purple-50/50 dark:bg-purple-950/10 hover:border-purple-200 dark:hover:border-purple-800/50",
             )}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -75,10 +79,9 @@ export function PlatformPicker({ selectedPlatform, onChange, settings, updateSet
             onClick={() => onChange("self-hosted")}
             className={cn(
               "p-4 rounded-lg cursor-pointer transition-all",
-              "border-2",
-              selectedPlatform === "self-hosted"
-                ? "border-amber-500 bg-amber-50 dark:bg-amber-950/20"
-                : "border-amber-100 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-950/20 hover:border-amber-200 dark:hover:border-amber-800/50",
+              platform === "self-hosted"
+                ? "border-2 border-amber-500 bg-amber-100 dark:bg-amber-900/30"
+                : "border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 hover:border-amber-200 dark:hover:border-amber-800/50",
             )}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -111,10 +114,9 @@ export function PlatformPicker({ selectedPlatform, onChange, settings, updateSet
             onClick={() => onChange("hybrid")}
             className={cn(
               "p-4 rounded-lg cursor-pointer transition-all",
-              "border-2",
-              selectedPlatform === "hybrid"
-                ? "border-pink-500 bg-pink-50 dark:bg-pink-950/20"
-                : "border-pink-100 dark:border-pink-900/30 bg-pink-50 dark:bg-pink-950/20 hover:border-pink-200 dark:hover:border-pink-800/50",
+              platform === "hybrid"
+                ? "border-2 border-pink-500 bg-pink-100 dark:bg-pink-900/30"
+                : "border border-pink-100 dark:border-pink-900/30 bg-pink-50/50 dark:bg-pink-950/10 hover:border-pink-200 dark:hover:border-pink-800/50",
             )}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -148,192 +150,36 @@ export function PlatformPicker({ selectedPlatform, onChange, settings, updateSet
           </motion.div>
         </div>
 
-        {(selectedPlatform === "self-hosted" || selectedPlatform === "hybrid") && (
+        {(platform === "self-hosted" || platform === "hybrid") && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700"
           >
-            <h3 className="text-md font-semibold mb-4">Self-Hosted Configuration</h3>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="serverType">Server Type</Label>
-                  <Select
-                    value={settings.serverType || "mac-mini"}
-                    onValueChange={(value) => updateSettings({ serverType: value })}
-                  >
-                    <SelectTrigger id="serverType">
-                      <SelectValue placeholder="Select server type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mac-mini">Mac Mini (M2 Pro)</SelectItem>
-                      <SelectItem value="mac-studio">Mac Studio (M2 Max)</SelectItem>
-                      <SelectItem value="linux-server">Linux Server (x86)</SelectItem>
-                      <SelectItem value="custom">Custom Hardware</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-3">
+                <div className="p-1.5 bg-blue-100 dark:bg-blue-800 rounded-full">
+                  <ArrowRight className="h-4 w-4 text-blue-600 dark:text-blue-300" />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="networkInterface">Network Interface</Label>
-                  <Select
-                    value={settings.networkInterface || "1gbe"}
-                    onValueChange={(value) => updateSettings({ networkInterface: value })}
-                  >
-                    <SelectTrigger id="networkInterface">
-                      <SelectValue placeholder="Select network interface" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1gbe">1GbE (Standard)</SelectItem>
-                      <SelectItem value="10gbe">10GbE (Upgraded)</SelectItem>
-                      <SelectItem value="100gbe">100GbE (Enterprise)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    {platform === "hybrid" ? "Hybrid Configuration Available" : "Hardware Configuration Available"}
+                  </h3>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    {platform === "hybrid"
+                      ? "Your hybrid infrastructure settings, including both local hardware and cloud provider options, are available in the panel on the right side of the screen."
+                      : "Your hardware settings and recommendations are available in the panel on the right side of the screen."}
+                  </p>
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="streamingServer">Streaming Server</Label>
-                  <Select
-                    value={settings.streamingServer || "mediamtx"}
-                    onValueChange={(value) => updateSettings({ streamingServer: value })}
-                  >
-                    <SelectTrigger id="streamingServer">
-                      <SelectValue placeholder="Select streaming server" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mediamtx">MediaMTX</SelectItem>
-                      <SelectItem value="nginx-rtmp">Nginx-RTMP</SelectItem>
-                      <SelectItem value="wowza">Wowza Streaming Engine</SelectItem>
-                      <SelectItem value="srt-live">SRT Live Server</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transcodingEngine">Transcoding Engine</Label>
-                  <Select
-                    value={settings.transcodingEngine || "hardware"}
-                    onValueChange={(value) => updateSettings({ transcodingEngine: value })}
-                  >
-                    <SelectTrigger id="transcodingEngine">
-                      <SelectValue placeholder="Select transcoding engine" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hardware">Hardware (Apple Media Engine)</SelectItem>
-                      <SelectItem value="software">Software (CPU-based)</SelectItem>
-                      <SelectItem value="hybrid">Hybrid (Hardware + Software)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="redundancyLevel">Redundancy Level</Label>
-                  <Select
-                    value={settings.redundancyLevel || "none"}
-                    onValueChange={(value) => updateSettings({ redundancyLevel: value })}
-                  >
-                    <SelectTrigger id="redundancyLevel">
-                      <SelectValue placeholder="Select redundancy level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None (Single Server)</SelectItem>
-                      <SelectItem value="cold">Cold Standby</SelectItem>
-                      <SelectItem value="warm">Warm Standby</SelectItem>
-                      <SelectItem value="hot">Hot Standby (Automated)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bandwidthCapacity">Bandwidth Capacity (Mbps)</Label>
-                  <Input
-                    id="bandwidthCapacity"
-                    type="number"
-                    min={0}
-                    value={settings.bandwidthCapacity || 1000}
-                    onChange={(e) => updateSettings({ bandwidthCapacity: Number.parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              {selectedPlatform === "hybrid" && (
-                <>
-                  <Separator className="my-4" />
-                  <h4 className="text-sm font-medium mb-3">Hybrid-Specific Configuration</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="cloudProvider">Cloud Provider</Label>
-                      <Select
-                        value={settings.cloudProvider || "cloudflare"}
-                        onValueChange={(value) => updateSettings({ cloudProvider: value })}
-                      >
-                        <SelectTrigger id="cloudProvider">
-                          <SelectValue placeholder="Select cloud provider" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cloudflare">Cloudflare Stream</SelectItem>
-                          <SelectItem value="mux">Mux</SelectItem>
-                          <SelectItem value="aws">AWS MediaConnect + CloudFront</SelectItem>
-                          <SelectItem value="gcp">Google Cloud CDN</SelectItem>
-                          <SelectItem value="azure">Azure Media Services</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Cloud service for stream distribution
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="originEgressCost">Origin Egress Cost ($/GB)</Label>
-                      <Input
-                        id="originEgressCost"
-                        type="number"
-                        min={0}
-                        step={0.001}
-                        value={settings.originEgressCost || 0.09}
-                        onChange={(e) => updateSettings({ originEgressCost: Number.parseFloat(e.target.value) || 0 })}
-                      />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Cost to transfer data from your server to cloud
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    <Label htmlFor="hybridRedundancyMode">Redundancy Mode</Label>
-                    <Select
-                      value={settings.hybridRedundancyMode || "active-passive"}
-                      onValueChange={(value) => updateSettings({ hybridRedundancyMode: value })}
-                    >
-                      <SelectTrigger id="hybridRedundancyMode">
-                        <SelectValue placeholder="Select redundancy mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active-passive">Active-Passive (Cloud Backup)</SelectItem>
-                        <SelectItem value="active-active">Active-Active (Load Balanced)</SelectItem>
-                        <SelectItem value="local-primary">Local Primary with Cloud Failover</SelectItem>
-                        <SelectItem value="cloud-primary">Cloud Primary with Local Failover</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      How local and cloud resources work together
-                    </p>
-                  </div>
-                </>
-              )}
-
+            <div className="mt-4 lg:hidden">
               <Alert className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/30">
                 <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <AlertDescription className="text-xs text-amber-700 dark:text-amber-300">
-                  Self-hosted streaming requires technical expertise and ongoing maintenance. Ensure you have adequate
-                  resources for 24/7 operations.
+                  On mobile devices, scroll down to find the infrastructure configuration panel below.
                 </AlertDescription>
               </Alert>
             </div>

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Table } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import type { VodStatistics } from "@/lib/types"
 
@@ -13,14 +14,12 @@ interface VodStatisticsProps {
   vodCategories: VodStatistics[]
   updateVodCategories: (vodCategories: VodStatistics[]) => void
   defaultFillRate?: number
-  isEdited?: (fieldPath: string) => boolean
 }
 
 export function VodStatisticsManager({
   vodCategories,
   updateVodCategories,
   defaultFillRate = 100,
-  isEdited,
 }: VodStatisticsProps) {
   const [editingCategory, setEditingCategory] = useState<VodStatistics | null>(null)
   const [isAdding, setIsAdding] = useState(false)
@@ -36,7 +35,7 @@ export function VodStatisticsManager({
   const handleAddCategory = () => {
     const category: VodStatistics = {
       ...newCategory,
-      id: `vod-${Date.now()}`,
+      id: `category-${Date.now()}`,
     }
     updateVodCategories([...vodCategories, category])
     setNewCategory({
@@ -63,15 +62,14 @@ export function VodStatisticsManager({
     updateVodCategories(vodCategories.filter((category) => category.id !== id))
   }
 
-  const calculateVodRevenue = (category: VodStatistics) => {
-    // Monthly revenue = views * ad spots per view * fill rate * CPM / 1000
+  const calculateCategoryRevenue = (category: VodStatistics) => {
     const fillRate = category.fillRate !== undefined ? category.fillRate / 100 : defaultFillRate / 100
     return (category.monthlyViews * category.adSpotsPerView * fillRate * category.cpmRate) / 1000
   }
 
   return (
     <Card className="border-slate-200 dark:border-slate-800">
-      <CardHeader className="bg-gradient-to-r from-slate-50 to-purple-50 dark:from-slate-900 dark:to-purple-900/30 px-3 sm:px-4 py-3">
+      <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30 px-3 sm:px-4 py-3">
         <CardTitle>VOD Statistics</CardTitle>
       </CardHeader>
       <CardContent className="p-3 sm:p-4">
@@ -80,7 +78,7 @@ export function VodStatisticsManager({
             <div className="overflow-x-auto -mx-2 px-2">
               <div className="inline-block min-w-full align-middle px-3 sm:px-4">
                 <div className="overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                  <Table className="w-full text-sm table-fixed">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
                         <th
@@ -91,25 +89,31 @@ export function VodStatisticsManager({
                         </th>
                         <th
                           scope="col"
-                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6"
                         >
-                          Views
+                          Monthly Views
                         </th>
                         <th
                           scope="col"
-                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6"
                         >
-                          Watch Time
+                          Avg. Watch Time
                         </th>
                         <th
                           scope="col"
-                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6"
+                        >
+                          CPM
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6"
                         >
                           Revenue
                         </th>
                         <th
                           scope="col"
-                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/5"
+                          className="py-2 px-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/6"
                         >
                           Actions
                         </th>
@@ -119,7 +123,6 @@ export function VodStatisticsManager({
                       {vodCategories.map((category) => (
                         <tr key={category.id}>
                           {editingCategory?.id === category.id ? (
-                            // Editing mode - simplified for mobile
                             <>
                               <td className="py-2 px-1">
                                 <Input
@@ -151,10 +154,20 @@ export function VodStatisticsManager({
                                   className="w-full text-sm text-right"
                                 />
                               </td>
-                              <td className="py-2 px-1 text-right font-mono text-xs">
-                                {formatCurrency(calculateVodRevenue(editingCategory))}
-                              </td>
                               <td className="py-2 px-1">
+                                <Input
+                                  type="number"
+                                  value={editingCategory.cpmRate}
+                                  onChange={(e) =>
+                                    setEditingCategory({ ...editingCategory, cpmRate: Number(e.target.value) })
+                                  }
+                                  className="w-full text-sm text-right"
+                                />
+                              </td>
+                              <td className="py-2 px-2 text-right font-mono text-xs">
+                                {formatCurrency(calculateCategoryRevenue(editingCategory))}
+                              </td>
+                              <td className="py-2 px-2">
                                 <div className="flex justify-end gap-1">
                                   <Button
                                     size="sm"
@@ -176,7 +189,6 @@ export function VodStatisticsManager({
                               </td>
                             </>
                           ) : (
-                            // View mode - simplified for mobile
                             <>
                               <td className="py-2 px-1 text-xs sm:text-sm">{category.name}</td>
                               <td className="py-2 px-1 text-right text-xs sm:text-sm">
@@ -185,10 +197,13 @@ export function VodStatisticsManager({
                               <td className="py-2 px-1 text-right text-xs sm:text-sm">
                                 {category.averageWatchTimeMinutes}m
                               </td>
-                              <td className="py-2 px-1 text-right font-mono text-xs">
-                                {formatCurrency(calculateVodRevenue(category))}
+                              <td className="py-2 px-1 text-right text-xs sm:text-sm">
+                                ${category.cpmRate.toFixed(2)}
                               </td>
-                              <td className="py-2 px-1">
+                              <td className="py-2 px-2 text-right font-mono text-xs">
+                                {formatCurrency(calculateCategoryRevenue(category))}
+                              </td>
+                              <td className="py-2 px-2">
                                 <div className="flex justify-end gap-1">
                                   <Button
                                     size="sm"
@@ -213,7 +228,7 @@ export function VodStatisticsManager({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               </div>
             </div>
@@ -235,7 +250,7 @@ export function VodStatisticsManager({
                     id="categoryName"
                     value={newCategory.name}
                     onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                    placeholder="News Archives"
+                    placeholder="Action Movies"
                     className="h-8 text-sm"
                   />
                 </div>
@@ -278,19 +293,6 @@ export function VodStatisticsManager({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="fillRate" className="text-xs">
-                    Fill Rate (%)
-                  </Label>
-                  <Input
-                    id="fillRate"
-                    type="number"
-                    value={newCategory.fillRate !== undefined ? newCategory.fillRate : defaultFillRate}
-                    onChange={(e) => setNewCategory({ ...newCategory, fillRate: Number(e.target.value) })}
-                    placeholder={`Default (${defaultFillRate}%)`}
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
                   <Label htmlFor="cpmRate" className="text-xs">
                     CPM Rate ($)
                   </Label>
@@ -328,5 +330,3 @@ export function VodStatisticsManager({
     </Card>
   )
 }
-
-export { VodStatisticsManager as VodStatistics }
