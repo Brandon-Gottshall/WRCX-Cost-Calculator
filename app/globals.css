@@ -92,3 +92,29 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Add some global CSS to ensure proper containment of all UI elements */
+
+/* Add these styles to ensure charts are properly contained */
+.recharts-wrapper {
+  overflow: hidden;
+}
+
+/* Add these styles to ensure revenue components are properly aligned */
+.revenue-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Ensure KPI cards display properly */
+@layer utilities {
+  .min-h-card {
+    min-height: 100px;
+  }
+
+  .card-content-fix {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+}

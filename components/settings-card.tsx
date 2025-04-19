@@ -13,6 +13,16 @@ import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { calculateHardwareRequirements, getHardwareOptions } from "@/lib/hardware-calculator"
 
+// Define ValidationResult and getFieldValidation
+interface ValidationResult {
+  field: string
+  message: string
+}
+
+const getFieldValidation = (field: string, validationResults: ValidationResult[]): ValidationResult | undefined => {
+  return validationResults.find((result) => result.field === field)
+}
+
 interface SettingsCardProps {
   title: string
   description: string
@@ -28,9 +38,17 @@ interface SettingsCardProps {
     | "hardware-hosting"
     | "analytics"
     | "self-hosted-config"
+  validationResults: ValidationResult[]
 }
 
-export function SettingsCard({ title, description, settings, updateSettings, type }: SettingsCardProps) {
+export function SettingsCard({
+  title,
+  description,
+  settings,
+  updateSettings,
+  type,
+  validationResults,
+}: SettingsCardProps) {
   // Simple fade animation without height changes
   const cardVariants = {
     visible: {
@@ -57,7 +75,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <StreamSettings settings={settings} updateSettings={updateSettings} />
+              <StreamSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "live-to-vod" && (
@@ -67,7 +89,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <LiveToVodSettings settings={settings} updateSettings={updateSettings} />
+              <LiveToVodSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "legacy-vod" && (
@@ -77,7 +103,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <LegacyVodSettings settings={settings} updateSettings={updateSettings} />
+              <LegacyVodSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "storage-db" && (
@@ -87,7 +117,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <StorageDbSettings settings={settings} updateSettings={updateSettings} />
+              <StorageDbSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "email" && (
@@ -97,7 +131,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <EmailSettings settings={settings} updateSettings={updateSettings} />
+              <EmailSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "cdn" && (
@@ -107,7 +145,7 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <CdnSettings settings={settings} updateSettings={updateSettings} />
+              <CdnSettings settings={settings} updateSettings={updateSettings} validationResults={validationResults} />
             </motion.div>
           )}
           {type === "hardware-hosting" && (
@@ -117,7 +155,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <HardwareHostingSettings settings={settings} updateSettings={updateSettings} />
+              <HardwareHostingSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "analytics" && (
@@ -127,7 +169,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <AnalyticsSettings settings={settings} updateSettings={updateSettings} />
+              <AnalyticsSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
           {type === "self-hosted-config" && (
@@ -137,7 +183,11 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
               variants={cardVariants}
               transition={{ duration: 0.2 }}
             >
-              <SelfHostedSettings settings={settings} updateSettings={updateSettings} />
+              <SelfHostedSettings
+                settings={settings}
+                updateSettings={updateSettings}
+                validationResults={validationResults}
+              />
             </motion.div>
           )}
         </CardContent>
@@ -146,12 +196,49 @@ export function SettingsCard({ title, description, settings, updateSettings, typ
   )
 }
 
+interface ValidatedInputProps {
+  id: string
+  label: string
+  type: string
+  min?: number
+  value: any
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  className?: string
+  description?: string
+  validation?: ValidationResult
+}
+
+function ValidatedInput({
+  id,
+  label,
+  type,
+  min,
+  value,
+  onChange,
+  className,
+  description,
+  validation,
+}: ValidatedInputProps) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center space-x-2">
+        <Input id={id} type={type} min={min} value={value} onChange={onChange} className={className} />
+      </div>
+      {description && <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>}
+      {validation && <p className="text-sm text-red-500">{validation.message}</p>}
+    </div>
+  )
+}
+
 function StreamSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   // Use local state to ensure immediate UI updates
   const [showDvrSettings, setShowDvrSettings] = React.useState(settings.liveDvrEnabled)
@@ -160,6 +247,10 @@ function StreamSettings({
   React.useEffect(() => {
     setShowDvrSettings(settings.liveDvrEnabled)
   }, [settings.liveDvrEnabled])
+
+  // Get validation for specific fields
+  const channelCountValidation = getFieldValidation("channelCount", validationResults)
+  const peakConcurrentViewersValidation = getFieldValidation("peakConcurrentViewers", validationResults)
 
   return (
     <div className="space-y-6">
@@ -180,35 +271,29 @@ function StreamSettings({
           <Separator />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="channelCount">Channel Count (Live)</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="channelCount"
-                  type="number"
-                  min={1}
-                  value={settings.channelCount}
-                  onChange={(e) => updateSettings({ channelCount: Number.parseInt(e.target.value) || 1 })}
-                  className="w-full"
-                />
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Number of simultaneous live channels</p>
-            </div>
+            <ValidatedInput
+              id="channelCount"
+              label="Channel Count (Live)"
+              type="number"
+              min={1}
+              value={settings.channelCount}
+              onChange={(e) => updateSettings({ channelCount: Number.parseInt(e.target.value) || 1 })}
+              className="w-full"
+              description="Number of simultaneous live channels"
+              validation={channelCountValidation}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="peakConcurrentViewers">Peak Concurrent Viewers / Channel</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="peakConcurrentViewers"
-                  type="number"
-                  min={0}
-                  value={settings.peakConcurrentViewers}
-                  onChange={(e) => updateSettings({ peakConcurrentViewers: Number.parseInt(e.target.value) || 0 })}
-                  className="w-full"
-                />
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Maximum viewers at any given time</p>
-            </div>
+            <ValidatedInput
+              id="peakConcurrentViewers"
+              label="Peak Concurrent Viewers / Channel"
+              type="number"
+              min={0}
+              value={settings.peakConcurrentViewers}
+              onChange={(e) => updateSettings({ peakConcurrentViewers: Number.parseInt(e.target.value) || 0 })}
+              className="w-full"
+              description="Maximum viewers at any given time"
+              validation={peakConcurrentViewersValidation}
+            />
           </div>
 
           <div className="space-y-2">
@@ -290,9 +375,11 @@ function StreamSettings({
 function LiveToVodSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-6">
@@ -401,9 +488,11 @@ function LiveToVodSettings({
 function LegacyVodSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-6">
@@ -494,9 +583,11 @@ function LegacyVodSettings({
 function StorageDbSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-6">
@@ -559,9 +650,11 @@ function StorageDbSettings({
 function EmailSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-6">
@@ -597,9 +690,11 @@ function EmailSettings({
 function CdnSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-8">
@@ -815,9 +910,11 @@ function CdnSettings({
 function HardwareHostingSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   const hardwareRequirements = calculateHardwareRequirements(settings)
   const hardwareOptions = getHardwareOptions()
@@ -958,9 +1055,11 @@ function HardwareHostingSettings({
 function AnalyticsSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   // Convert string-based analytics settings to an array of selected options
   const [selectedViewerAnalytics, setSelectedViewerAnalytics] = React.useState<string[]>(
@@ -1206,9 +1305,11 @@ function AnalyticsSettings({
 function SelfHostedSettings({
   settings,
   updateSettings,
+  validationResults,
 }: {
   settings: SettingsState
   updateSettings: (settings: Partial<SettingsState>) => void
+  validationResults: ValidationResult[]
 }) {
   return (
     <div className="space-y-6">

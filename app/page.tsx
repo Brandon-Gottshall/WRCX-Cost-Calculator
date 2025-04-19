@@ -1,18 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AnimatePresence } from "framer-motion"
-import { Download, RefreshCw, Copy } from "lucide-react"
+import { Download, RefreshCw, Copy, AlertTriangle } from "lucide-react"
 import { calculateCosts } from "@/lib/cost-engine"
+import { validateSettings, hasValidationErrors } from "@/lib/validation"
 import { PlatformPicker } from "@/components/platform-picker"
 import { SettingsCard } from "@/components/settings-card"
 import { CostPreview } from "@/components/cost-preview"
 import { SettingsTabs } from "@/components/settings-tabs"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { ValidationAlert } from "@/components/validation-alert"
 import type { SettingsState, Tab } from "@/lib/types"
 
+// Add these imports at the top with the other imports
+import { calculateRevenue } from "@/lib/revenue-engine"
+import { RevenueSettings } from "@/components/revenue-settings"
+import { RevenueKPIs } from "@/components/revenue-kpis"
+import { RevenueVsCost } from "@/components/revenue-vs-cost"
+// Add these imports at the top with the other imports
+import { ChannelStatisticsManager } from "@/components/channel-statistics"
+import { VodStatisticsManager } from "@/components/vod-statistics"
+
 export default function CostCalculator() {
+  // Update the initial state in the useState hook to include the new fields
   const [settings, setSettings] = useState<SettingsState>({
     platform: "mux",
     streamEnabled: true, // Initialize to true
@@ -21,12 +33,34 @@ export default function CostCalculator() {
     encodingPreset: "1080p-tri-ladder",
     liveDvrEnabled: true,
     recordingStorageLocation: "same-as-vod",
+    // Add channel statistics
+    channels: [
+      {
+        id: "channel-1",
+        name: "Main Channel",
+        viewership: 1000,
+        averageRetentionMinutes: 45,
+        adSpotsPerHour: 4,
+        cpmRate: 15,
+      },
+    ],
     vodEnabled: true,
     vodProvider: "same-as-live",
     hoursPerDayArchived: 24,
     retentionWindow: 30,
     deliveryRegion: "us",
     peakConcurrentVodViewers: 50,
+    // Add VOD categories
+    vodCategories: [
+      {
+        id: "vod-1",
+        name: "News Archives",
+        monthlyViews: 5000,
+        averageWatchTimeMinutes: 20,
+        adSpotsPerView: 1,
+        cpmRate: 20,
+      },
+    ],
     legacyEnabled: false,
     backCatalogHours: 0,
     legacyProvider: "same-as-vod",
@@ -61,16 +95,62 @@ export default function CostCalculator() {
     cloudProvider: "cloudflare",
     originEgressCost: 0.09,
     hybridRedundancyMode: "active-passive",
+    // Add revenue settings with default values and new fields
+    revenue: {
+      liveAdsEnabled: true,
+      averageDailyUniqueViewers: 1000,
+      averageViewingHoursPerViewer: 2,
+      adSpotsPerHour: 4,
+      cpmRate: 15,
+
+      // Advanced revenue controls
+      peakTimeMultiplier: 1.2,
+      seasonalMultiplier: 1.0,
+      targetDemographicValue: 1.1,
+
+      paidProgrammingEnabled: true,
+      monthlyPaidBlocks: 4,
+      ratePerBlock: 250,
+
+      // Premium tier options
+      premiumSponsorshipEnabled: false,
+      premiumSponsorshipRate: 500,
+      premiumSponsorshipCount: 0,
+
+      vodAdsEnabled: true,
+      monthlyVodViews: 5000,
+      adSpotsPerVodView: 1,
+      vodCpmRate: 20,
+
+      // VOD advanced options
+      vodSkipRate: 0.15,
+      vodCompletionRate: 0.85,
+      vodPremiumPlacementRate: 0.05,
+    },
   })
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
+  const [validationResults, setValidationResults] = useState(validateSettings ? validateSettings(settings) : [])
+  const [showDetailedBreakdown, setShowDetailedBreakdown] = useState(false)
+
+  // Validate settings whenever they change
+  useEffect(() => {
+    if (validateSettings) {
+      setValidationResults(validateSettings(settings))
+    }
+  }, [settings])
 
   const costs = calculateCosts(settings)
+
+  // Add this after the costs calculation
+  // Update the revenue calculations to use the channel and VOD statistics
+  const revenueCalculations = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
 
   const updateSettings = (newSettings: Partial<SettingsState>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }))
   }
 
+  // Update the resetSettings function to include the new fields
   const resetSettings = () => {
     setSettings({
       platform: "mux",
@@ -80,12 +160,34 @@ export default function CostCalculator() {
       encodingPreset: "1080p-tri-ladder",
       liveDvrEnabled: true,
       recordingStorageLocation: "same-as-vod",
+      // Add channel statistics
+      channels: [
+        {
+          id: "channel-1",
+          name: "Main Channel",
+          viewership: 1000,
+          averageRetentionMinutes: 45,
+          adSpotsPerHour: 4,
+          cpmRate: 15,
+        },
+      ],
       vodEnabled: true,
       vodProvider: "same-as-live",
       hoursPerDayArchived: 24,
       retentionWindow: 30,
       deliveryRegion: "us",
       peakConcurrentVodViewers: 50,
+      // Add VOD categories
+      vodCategories: [
+        {
+          id: "vod-1",
+          name: "News Archives",
+          monthlyViews: 5000,
+          averageWatchTimeMinutes: 20,
+          adSpotsPerView: 1,
+          cpmRate: 20,
+        },
+      ],
       legacyEnabled: false,
       backCatalogHours: 0,
       legacyProvider: "same-as-vod",
@@ -120,17 +222,63 @@ export default function CostCalculator() {
       cloudProvider: "cloudflare",
       originEgressCost: 0.09,
       hybridRedundancyMode: "active-passive",
+      revenue: {
+        liveAdsEnabled: true,
+        averageDailyUniqueViewers: 1000,
+        averageViewingHoursPerViewer: 2,
+        adSpotsPerHour: 4,
+        cpmRate: 15,
+
+        // Advanced revenue controls
+        peakTimeMultiplier: 1.2,
+        seasonalMultiplier: 1.0,
+        targetDemographicValue: 1.1,
+
+        paidProgrammingEnabled: true,
+        monthlyPaidBlocks: 4,
+        ratePerBlock: 250,
+
+        // Premium tier options
+        premiumSponsorshipEnabled: false,
+        premiumSponsorshipRate: 500,
+        premiumSponsorshipCount: 0,
+
+        vodAdsEnabled: true,
+        monthlyVodViews: 5000,
+        adSpotsPerVodView: 1,
+        vodCpmRate: 20,
+
+        // VOD advanced options
+        vodSkipRate: 0.15,
+        vodCompletionRate: 0.85,
+        vodPremiumPlacementRate: 0.05,
+      },
     })
     setActiveTab("live")
   }
 
   const copyToEstimate = () => {
+    // Check for validation errors before allowing export
+    if (hasValidationErrors && hasValidationErrors(validationResults)) {
+      alert("Please fix validation errors before exporting the estimate.")
+      return
+    }
+
     // Implementation for copying to estimate
     console.log("Copying to estimate:", settings, costs)
     // This would typically call an API or generate a CSV
   }
 
-  const isSelfHosted = settings.platform === "self-hosted" || settings.platform === "hybrid"
+  const tabs: { id: Tab; label: string; disabled?: boolean }[] = [
+    { id: "live", label: "Live" },
+    { id: "legacy-vod", label: "Legacy VOD" },
+    { id: "storage", label: "Storage & DB" },
+    { id: "email", label: "Email" },
+    { id: "cdn", label: "CDN", disabled: settings.platform === "mux" && !settings.liveDvrEnabled },
+    { id: "hardware", label: "Hardware & Hosting" },
+    { id: "analytics", label: "Analytics" },
+    { id: "revenue", label: "Revenue" }, // Add the revenue tab
+  ]
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
@@ -161,6 +309,11 @@ export default function CostCalculator() {
               updateSettings={updateSettings}
             />
 
+            {/* Display validation alerts */}
+            {validationResults && validationResults.length > 0 && (
+              <ValidationAlert validationResults={validationResults} />
+            )}
+
             <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
             <div className="space-y-6">
@@ -173,10 +326,20 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="stream"
+                    validationResults={validationResults || []}
                   />
                 )}
 
                 {/* Only show Live->VOD section if streaming is enabled */}
+                {activeTab === "live" && settings.streamEnabled !== false && (
+                  // Add the channel and VOD statistics components to the appropriate tabs
+                  <ChannelStatisticsManager
+                    key="channel-statistics"
+                    channels={settings.channels}
+                    updateChannels={(channels) => updateSettings({ channels })}
+                  />
+                )}
+
                 {activeTab === "live" && settings.streamEnabled !== false && (
                   <SettingsCard
                     key="live-to-vod"
@@ -185,6 +348,16 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="live-to-vod"
+                    validationResults={validationResults || []}
+                  />
+                )}
+
+                {activeTab === "legacy-vod" && (
+                  // Add the channel and VOD statistics components to the appropriate tabs
+                  <VodStatisticsManager
+                    key="vod-statistics"
+                    vodCategories={settings.vodCategories}
+                    updateVodCategories={(vodCategories) => updateSettings({ vodCategories })}
                   />
                 )}
 
@@ -196,6 +369,7 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="legacy-vod"
+                    validationResults={validationResults || []}
                   />
                 )}
 
@@ -207,6 +381,7 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="storage-db"
+                    validationResults={validationResults || []}
                   />
                 )}
 
@@ -218,6 +393,7 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="email"
+                    validationResults={validationResults || []}
                   />
                 )}
 
@@ -229,6 +405,7 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="cdn"
+                    validationResults={validationResults || []}
                   />
                 )}
 
@@ -240,6 +417,7 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="hardware-hosting"
+                    validationResults={validationResults || []}
                   />
                 )}
 
@@ -251,6 +429,19 @@ export default function CostCalculator() {
                     settings={settings}
                     updateSettings={updateSettings}
                     type="analytics"
+                    validationResults={validationResults || []}
+                  />
+                )}
+                {activeTab === "revenue" && (
+                  <RevenueSettings
+                    key="revenue"
+                    revenue={settings.revenue}
+                    updateRevenue={(revenueUpdate) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        revenue: { ...prev.revenue, ...revenueUpdate },
+                      }))
+                    }
                   />
                 )}
               </AnimatePresence>
@@ -259,8 +450,31 @@ export default function CostCalculator() {
 
           {/* Right Column - Cost Preview (40%) */}
           <div className="lg:col-span-2">
-            <div className="sticky top-24">
-              <CostPreview costs={costs} settings={settings} />
+            <div className="sticky top-24 space-y-6">
+              <CostPreview costs={costs} settings={settings} revenue={revenueCalculations} />
+
+              {/* Validation warning for cost preview */}
+              {hasValidationErrors && hasValidationErrors(validationResults) && (
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                      Cost estimate may be inaccurate
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Please fix validation errors to ensure accurate pricing calculations.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Revenue KPIs */}
+              <div className="mb-6">
+                <RevenueKPIs revenue={revenueCalculations} />
+              </div>
+
+              {/* Revenue vs Cost chart */}
+              <RevenueVsCost revenue={revenueCalculations} costs={costs} />
             </div>
           </div>
         </div>
@@ -274,7 +488,11 @@ export default function CostCalculator() {
             <span>Reset</span>
           </Button>
 
-          <Button onClick={copyToEstimate} className="gap-2">
+          <Button
+            onClick={copyToEstimate}
+            className="gap-2"
+            disabled={hasValidationErrors && hasValidationErrors(validationResults)}
+          >
             <Copy size={16} />
             <span>Copy to Estimate</span>
           </Button>
