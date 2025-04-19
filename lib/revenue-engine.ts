@@ -16,9 +16,16 @@ export function calculateRevenue(
     if (channels && channels.length > 0) {
       // Calculate per-channel revenue
       channels.forEach((channel) => {
-        // Daily revenue = viewership * retention (hours) * ad spots per hour * CPM / 1000
+        // Get channel-specific fill rate or use global default
+        const fillRate = channel.fillRate !== undefined ? channel.fillRate / 100 : revenueState.fillRate / 100
+
+        // Daily revenue = viewership * retention (hours) * ad spots per hour * fill rate * CPM / 1000
         const dailyRevenue =
-          (channel.viewership * (channel.averageRetentionMinutes / 60) * channel.adSpotsPerHour * channel.cpmRate) /
+          (channel.viewership *
+            (channel.averageRetentionMinutes / 60) *
+            channel.adSpotsPerHour *
+            fillRate *
+            channel.cpmRate) /
           1000
 
         // Apply multipliers if available
@@ -38,10 +45,13 @@ export function calculateRevenue(
       })
     } else {
       // Use the aggregate numbers if no channel breakdown is available
+      const fillRate = revenueState.fillRate / 100
+
       liveAdRevenue =
         ((revenueState.averageDailyUniqueViewers *
           revenueState.averageViewingHoursPerViewer *
           revenueState.adSpotsPerHour *
+          fillRate *
           revenueState.cpmRate) /
           1000) *
         30 * // Assuming 30 days per month
@@ -71,14 +81,17 @@ export function calculateRevenue(
     if (vodCategories && vodCategories.length > 0) {
       // Calculate per-category revenue
       vodCategories.forEach((category) => {
+        // Get category-specific fill rate or use global default
+        const fillRate = category.fillRate !== undefined ? category.fillRate / 100 : revenueState.vodFillRate / 100
+
         // Apply advanced factors if available
         const skipFactor = 1 - (revenueState.vodSkipRate || 0)
         const completionFactor = revenueState.vodCompletionRate || 1
         const premiumFactor = 1 + (revenueState.vodPremiumPlacementRate || 0)
 
-        // Monthly revenue = views * ad spots per view * CPM / 1000 * factors
+        // Monthly revenue = views * ad spots per view * fill rate * CPM / 1000 * factors
         const categoryRevenue =
-          ((category.monthlyViews * category.adSpotsPerView * category.cpmRate) / 1000) *
+          ((category.monthlyViews * category.adSpotsPerView * fillRate * category.cpmRate) / 1000) *
           skipFactor *
           completionFactor *
           premiumFactor
@@ -91,12 +104,13 @@ export function calculateRevenue(
       })
     } else {
       // Use the aggregate numbers if no category breakdown is available
+      const fillRate = revenueState.vodFillRate / 100
       const skipFactor = 1 - (revenueState.vodSkipRate || 0)
       const completionFactor = revenueState.vodCompletionRate || 1
       const premiumFactor = 1 + (revenueState.vodPremiumPlacementRate || 0)
 
       vodAdRevenue =
-        ((revenueState.monthlyVodViews * revenueState.adSpotsPerVodView * revenueState.vodCpmRate) / 1000) *
+        ((revenueState.monthlyVodViews * revenueState.adSpotsPerVodView * fillRate * revenueState.vodCpmRate) / 1000) *
         skipFactor *
         completionFactor *
         premiumFactor

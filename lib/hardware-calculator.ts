@@ -8,6 +8,7 @@ export interface HardwareRequirements {
   recommendedHardware: string
   estimatedCost: number
   isAvailable: boolean
+  maxViewers: number // Added to show max viewer capacity
 }
 
 // Constants for hardware requirements calculation
@@ -19,15 +20,36 @@ const BASE_REQUIREMENTS = {
     networkMbps: 100,
   },
   ENCODING_PER_CHANNEL: {
-    "1080p-tri-ladder": { cpuCores: 4, memoryGB: 4, storageGB: 0, networkMbps: 15 },
-    "720p-tri-ladder": { cpuCores: 3, memoryGB: 3, storageGB: 0, networkMbps: 10 },
-    "1080p-single": { cpuCores: 2, memoryGB: 2, storageGB: 0, networkMbps: 6 },
-    "4k-tri-ladder": { cpuCores: 8, memoryGB: 8, storageGB: 0, networkMbps: 45 },
-    "4k-single": { cpuCores: 4, memoryGB: 4, storageGB: 0, networkMbps: 20 },
+    "1080p-tri-ladder": { cpuCores: 4, memoryGB: 4, storageGB: 0, networkMbps: 5 },
+    "720p-tri-ladder": { cpuCores: 3, memoryGB: 3, storageGB: 0, networkMbps: 3 },
+    "1080p-single": { cpuCores: 2, memoryGB: 2, storageGB: 0, networkMbps: 5 },
+    "4k-tri-ladder": { cpuCores: 8, memoryGB: 8, storageGB: 0, networkMbps: 15 },
+    "4k-single": { cpuCores: 4, memoryGB: 4, storageGB: 0, networkMbps: 15 },
   },
   STORAGE_PER_HOUR: {
     HD: 2, // GB per hour of HD content
     UHD: 6, // GB per hour of UHD content
+  },
+  NETWORK_CAPACITY: {
+    "1gbe": 1000, // 1 Gbps = 1000 Mbps
+    "10gbe": 10000, // 10 Gbps = 10000 Mbps
+  },
+  // Viewers per channel based on network interface
+  MAX_VIEWERS_PER_CHANNEL: {
+    "1gbe": {
+      "1080p-tri-ladder": 20,
+      "720p-tri-ladder": 30,
+      "1080p-single": 20,
+      "4k-tri-ladder": 6,
+      "4k-single": 6,
+    },
+    "10gbe": {
+      "1080p-tri-ladder": 200,
+      "720p-tri-ladder": 300,
+      "1080p-single": 200,
+      "4k-tri-ladder": 60,
+      "4k-single": 60,
+    },
   },
 }
 
@@ -94,6 +116,7 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
     memoryGB: 0,
     storageGB: 0,
     networkMbps: 0,
+    maxViewers: 0,
   }
 
   // Always include Next.js server requirements
@@ -110,12 +133,33 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
         settings.encodingPreset as keyof typeof BASE_REQUIREMENTS.ENCODING_PER_CHANNEL
       ]
 
+    // Determine network interface capacity
+    const networkInterface = settings.networkInterface || "1gbe"
+    const networkCapacity =
+      BASE_REQUIREMENTS.NETWORK_CAPACITY[networkInterface as keyof typeof BASE_REQUIREMENTS.NETWORK_CAPACITY]
+
+    // Get max viewers per channel based on network interface and encoding preset
+    const maxViewersPerChannel =
+      BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL[
+        networkInterface as keyof typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL
+      ]?.[settings.encodingPreset as keyof (typeof BASE_REQUIREMENTS.MAX_VIEWERS_PER_CHANNEL)["1gbe"]] || 20 // Default to 20 if not found
+
     if (encodingPresetReqs) {
       requirements.cpuCores += Math.ceil(encodingPresetReqs.cpuCores * settings.channelCount * encodingMultiplier)
       requirements.memoryGB += Math.ceil(encodingPresetReqs.memoryGB * settings.channelCount * encodingMultiplier)
+
+      // Calculate network requirements based on the selected network interface
+      const viewersPerChannel = Math.min(settings.peakConcurrentViewers, maxViewersPerChannel)
       requirements.networkMbps += Math.ceil(
-        encodingPresetReqs.networkMbps * settings.channelCount * settings.peakConcurrentViewers * encodingMultiplier,
+        encodingPresetReqs.networkMbps * viewersPerChannel * settings.channelCount * encodingMultiplier,
       )
+
+      // Calculate max viewers based on network capacity
+      const totalBandwidthPerViewer = encodingPresetReqs.networkMbps
+      const maxViewersTotal = Math.floor(
+        (networkCapacity - BASE_REQUIREMENTS.NEXT_SERVER.networkMbps) / totalBandwidthPerViewer,
+      )
+      requirements.maxViewers = Math.floor(maxViewersTotal / settings.channelCount)
     }
 
     // Storage for VOD content if enabled
@@ -146,7 +190,7 @@ export function calculateHardwareRequirements(settings: SettingsState): Hardware
       settings.serverType ===
       recommendedHardware.name
         .toLowerCase()
-        .replace(/\s+$$.+$$/, "")
+        .replace(/\s+$.+$/, "")
         .replace(/\s+/g, "-"),
   }
 }
@@ -185,7 +229,7 @@ export function getHardwareOptions() {
   return HARDWARE_OPTIONS.map((option) => ({
     value: option.name
       .toLowerCase()
-      .replace(/\s+$$.+$$/, "")
+      .replace(/\s+$.+$/, "")
       .replace(/\s+/g, "-"),
     label: option.name,
     specs: `${option.cpuCores} cores, ${option.memoryGB}GB RAM, ${option.storageGB}GB storage, ${option.networkMbps >= 10000 ? "10GbE" : "1GbE"} network`,

@@ -105,6 +105,31 @@ export const validationRules: ValidationRule[] = [
       (settings.platform === "self-hosted" || settings.platform === "hybrid") && !settings.hardwareAvailable,
   },
   {
+    field: "serverCost",
+    min: 1,
+    message: "Hardware costs must be entered for self-hosted or hybrid platforms",
+    severity: "error",
+    condition: (settings) =>
+      (settings.platform === "self-hosted" || settings.platform === "hybrid") &&
+      settings.hardwareMode === "own" &&
+      !settings.hardwareAvailable,
+  },
+  {
+    field: "monthlyRentalCost",
+    min: 1,
+    message: "Monthly rental cost must be entered for self-hosted or hybrid platforms",
+    severity: "error",
+    condition: (settings) =>
+      (settings.platform === "self-hosted" || settings.platform === "hybrid") && settings.hardwareMode === "rent",
+  },
+  {
+    field: "internetColoMonthlyCost",
+    min: 1,
+    message: "Internet/colocation costs must be entered for self-hosted or hybrid platforms",
+    severity: "error",
+    condition: (settings) => settings.platform === "self-hosted" || settings.platform === "hybrid",
+  },
+  {
     field: "rackCost",
     min: 0,
     max: 10000,

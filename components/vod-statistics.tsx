@@ -13,9 +13,14 @@ import type { VodStatistics } from "@/lib/types"
 interface VodStatisticsProps {
   vodCategories: VodStatistics[]
   updateVodCategories: (vodCategories: VodStatistics[]) => void
+  defaultFillRate?: number
 }
 
-export function VodStatisticsManager({ vodCategories, updateVodCategories }: VodStatisticsProps) {
+export function VodStatisticsManager({
+  vodCategories,
+  updateVodCategories,
+  defaultFillRate = 100,
+}: VodStatisticsProps) {
   const [editingCategory, setEditingCategory] = useState<VodStatistics | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [newCategory, setNewCategory] = useState<Omit<VodStatistics, "id">>({
@@ -24,6 +29,7 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
     averageWatchTimeMinutes: 0,
     adSpotsPerView: 0,
     cpmRate: 0,
+    fillRate: defaultFillRate,
   })
 
   const handleAddCategory = () => {
@@ -38,6 +44,7 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
       averageWatchTimeMinutes: 0,
       adSpotsPerView: 0,
       cpmRate: 0,
+      fillRate: defaultFillRate,
     })
     setIsAdding(false)
   }
@@ -56,8 +63,9 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
   }
 
   const calculateVodRevenue = (category: VodStatistics) => {
-    // Monthly revenue = views * ad spots per view * CPM / 1000
-    return (category.monthlyViews * category.adSpotsPerView * category.cpmRate) / 1000
+    // Monthly revenue = views * ad spots per view * fill rate * CPM / 1000
+    const fillRate = category.fillRate !== undefined ? category.fillRate / 100 : defaultFillRate / 100
+    return (category.monthlyViews * category.adSpotsPerView * fillRate * category.cpmRate) / 1000
   }
 
   return (
@@ -75,6 +83,7 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
                   <TableHead className="text-right">Monthly Views</TableHead>
                   <TableHead className="text-right">Avg. Watch Time (min)</TableHead>
                   <TableHead className="text-right">Ad Spots/View</TableHead>
+                  <TableHead className="text-right">Fill Rate (%)</TableHead>
                   <TableHead className="text-right">CPM Rate</TableHead>
                   <TableHead className="text-right">Est. Monthly Revenue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -128,6 +137,17 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
                         <TableCell className="text-right">
                           <Input
                             type="number"
+                            value={editingCategory.fillRate !== undefined ? editingCategory.fillRate : defaultFillRate}
+                            onChange={(e) =>
+                              setEditingCategory({ ...editingCategory, fillRate: Number(e.target.value) })
+                            }
+                            className="w-24 text-right ml-auto"
+                            placeholder={`Default (${defaultFillRate}%)`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
                             value={editingCategory.cpmRate}
                             onChange={(e) =>
                               setEditingCategory({ ...editingCategory, cpmRate: Number(e.target.value) })
@@ -156,6 +176,9 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
                         <TableCell className="text-right">{category.monthlyViews.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{category.averageWatchTimeMinutes}</TableCell>
                         <TableCell className="text-right">{category.adSpotsPerView}</TableCell>
+                        <TableCell className="text-right">
+                          {category.fillRate !== undefined ? `${category.fillRate}%` : `${defaultFillRate}% (default)`}
+                        </TableCell>
                         <TableCell className="text-right">${category.cpmRate.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-mono">
                           {formatCurrency(calculateVodRevenue(category))}
@@ -222,6 +245,16 @@ export function VodStatisticsManager({ vodCategories, updateVodCategories }: Vod
                     type="number"
                     value={newCategory.adSpotsPerView}
                     onChange={(e) => setNewCategory({ ...newCategory, adSpotsPerView: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fillRate">Fill Rate (%)</Label>
+                  <Input
+                    id="fillRate"
+                    type="number"
+                    value={newCategory.fillRate !== undefined ? newCategory.fillRate : defaultFillRate}
+                    onChange={(e) => setNewCategory({ ...newCategory, fillRate: Number(e.target.value) })}
+                    placeholder={`Default (${defaultFillRate}%)`}
                   />
                 </div>
                 <div className="space-y-2">

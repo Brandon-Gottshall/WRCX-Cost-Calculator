@@ -13,9 +13,10 @@ import type { ChannelStatistics } from "@/lib/types"
 interface ChannelStatisticsProps {
   channels: ChannelStatistics[]
   updateChannels: (channels: ChannelStatistics[]) => void
+  defaultFillRate?: number
 }
 
-export function ChannelStatisticsManager({ channels, updateChannels }: ChannelStatisticsProps) {
+export function ChannelStatisticsManager({ channels, updateChannels, defaultFillRate = 100 }: ChannelStatisticsProps) {
   const [editingChannel, setEditingChannel] = useState<ChannelStatistics | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [newChannel, setNewChannel] = useState<Omit<ChannelStatistics, "id">>({
@@ -24,6 +25,7 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
     averageRetentionMinutes: 0,
     adSpotsPerHour: 0,
     cpmRate: 0,
+    fillRate: defaultFillRate,
   })
 
   const handleAddChannel = () => {
@@ -38,6 +40,7 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
       averageRetentionMinutes: 0,
       adSpotsPerHour: 0,
       cpmRate: 0,
+      fillRate: defaultFillRate,
     })
     setIsAdding(false)
   }
@@ -54,9 +57,15 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
   }
 
   const calculateChannelRevenue = (channel: ChannelStatistics) => {
-    // Daily revenue = viewership * retention (hours) * ad spots per hour * CPM / 1000
+    // Daily revenue = viewership * retention (hours) * ad spots per hour * fill rate * CPM / 1000
+    const fillRate = channel.fillRate !== undefined ? channel.fillRate / 100 : defaultFillRate / 100
     const dailyRevenue =
-      (channel.viewership * (channel.averageRetentionMinutes / 60) * channel.adSpotsPerHour * channel.cpmRate) / 1000
+      (channel.viewership *
+        (channel.averageRetentionMinutes / 60) *
+        channel.adSpotsPerHour *
+        fillRate *
+        channel.cpmRate) /
+      1000
 
     // Monthly revenue (30 days)
     return dailyRevenue * 30
@@ -77,6 +86,7 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
                   <TableHead className="text-right">Daily Viewers</TableHead>
                   <TableHead className="text-right">Avg. Retention (min)</TableHead>
                   <TableHead className="text-right">Ad Spots/Hour</TableHead>
+                  <TableHead className="text-right">Fill Rate (%)</TableHead>
                   <TableHead className="text-right">CPM Rate</TableHead>
                   <TableHead className="text-right">Est. Monthly Revenue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -127,6 +137,15 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
                         <TableCell className="text-right">
                           <Input
                             type="number"
+                            value={editingChannel.fillRate !== undefined ? editingChannel.fillRate : defaultFillRate}
+                            onChange={(e) => setEditingChannel({ ...editingChannel, fillRate: Number(e.target.value) })}
+                            className="w-24 text-right ml-auto"
+                            placeholder={`Default (${defaultFillRate}%)`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
                             value={editingChannel.cpmRate}
                             onChange={(e) => setEditingChannel({ ...editingChannel, cpmRate: Number(e.target.value) })}
                             className="w-24 text-right ml-auto"
@@ -153,6 +172,9 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
                         <TableCell className="text-right">{channel.viewership.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{channel.averageRetentionMinutes}</TableCell>
                         <TableCell className="text-right">{channel.adSpotsPerHour}</TableCell>
+                        <TableCell className="text-right">
+                          {channel.fillRate !== undefined ? `${channel.fillRate}%` : `${defaultFillRate}% (default)`}
+                        </TableCell>
                         <TableCell className="text-right">${channel.cpmRate.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-mono">
                           {formatCurrency(calculateChannelRevenue(channel))}
@@ -217,6 +239,16 @@ export function ChannelStatisticsManager({ channels, updateChannels }: ChannelSt
                     type="number"
                     value={newChannel.adSpotsPerHour}
                     onChange={(e) => setNewChannel({ ...newChannel, adSpotsPerHour: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fillRate">Fill Rate (%)</Label>
+                  <Input
+                    id="fillRate"
+                    type="number"
+                    value={newChannel.fillRate !== undefined ? newChannel.fillRate : defaultFillRate}
+                    onChange={(e) => setNewChannel({ ...newChannel, fillRate: Number(e.target.value) })}
+                    placeholder={`Default (${defaultFillRate}%)`}
                   />
                 </div>
                 <div className="space-y-2">

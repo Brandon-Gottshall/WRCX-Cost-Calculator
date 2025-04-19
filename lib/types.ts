@@ -9,6 +9,7 @@ export interface ChannelStatistics {
   averageRetentionMinutes: number
   adSpotsPerHour: number
   cpmRate: number
+  fillRate?: number // Added fill rate override for per-channel
 }
 
 export interface VodStatistics {
@@ -18,6 +19,7 @@ export interface VodStatistics {
   averageWatchTimeMinutes: number
   adSpotsPerView: number
   cpmRate: number
+  fillRate?: number // Added fill rate override for VOD categories
 }
 
 export interface SettingsState {
@@ -78,6 +80,15 @@ export interface SettingsState {
   hardwareAvailable: boolean
   recommendedHardware?: string
 
+  // New hardware fields
+  hardwareMode?: "own" | "rent"
+  amortizationMonths?: number
+  powerConsumptionKwh?: number
+  powerCostPerKwh?: number
+  internetColoMonthlyCost?: number
+  monthlyRentalCost?: number
+  networkSwitchCost?: number
+
   // Analytics
   viewerAnalytics: string
   siteAnalytics: string
@@ -117,6 +128,7 @@ export interface RevenueState {
   averageViewingHoursPerViewer: number
   adSpotsPerHour: number
   cpmRate: number
+  fillRate: number // Added global fill rate
 
   // Advanced revenue controls
   peakTimeMultiplier: number
@@ -138,6 +150,7 @@ export interface RevenueState {
   monthlyVodViews: number
   adSpotsPerVodView: number
   vodCpmRate: number
+  vodFillRate: number // Added global VOD fill rate
 
   // VOD advanced options
   vodSkipRate: number

@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { calculateHardwareRequirements, getHardwareOptions } from "@/lib/hardware-calculator"
+import { formatCurrency } from "@/lib/utils"
+import { Slider } from "@/components/ui/slider"
+import { Button } from "@/components/ui/button"
 
 // Define ValidationResult and getFieldValidation
 interface ValidationResult {
@@ -918,6 +921,17 @@ function HardwareHostingSettings({
 }) {
   const hardwareRequirements = calculateHardwareRequirements(settings)
   const hardwareOptions = getHardwareOptions()
+  const [hardwareMode, setHardwareMode] = React.useState<"own" | "rent">(settings.hardwareMode || "own")
+
+  // Calculate amortized monthly cost
+  const calculateAmortizedCost = (cost: number, months: number) => {
+    return months > 0 ? cost / months : 0
+  }
+
+  // Calculate power cost
+  const calculatePowerCost = (kwhPerMonth: number, costPerKwh: number) => {
+    return kwhPerMonth * costPerKwh
+  }
 
   // Update recommended hardware when requirements change
   React.useEffect(() => {
@@ -926,15 +940,101 @@ function HardwareHostingSettings({
         recommendedHardware: hardwareRequirements.recommendedHardware,
         serverType: hardwareRequirements.recommendedHardware
           .toLowerCase()
-          .replace(/\s+$$.+$$/, "")
+          .replace(/\s+$.+$/, "")
           .replace(/\s+/g, "-"),
         serverCost: hardwareRequirements.estimatedCost,
       })
     }
   }, [hardwareRequirements.recommendedHardware, settings.recommendedHardware, updateSettings])
 
+  // Set default values if they're zero or undefined
+  React.useEffect(() => {
+    const updates: Partial<SettingsState> = {}
+    let hasUpdates = false
+
+    if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
+      // Set default server cost if it's zero
+      if (!settings.serverCost) {
+        updates.serverCost = 800
+        hasUpdates = true
+      }
+
+      // Set default amortization period if it's zero
+      if (!settings.amortizationMonths) {
+        updates.amortizationMonths = 24
+        hasUpdates = true
+      }
+
+      // Set default power consumption if it's zero
+      if (!settings.powerConsumptionKwh) {
+        updates.powerConsumptionKwh = 15
+        hasUpdates = true
+      }
+
+      // Set default power cost if it's zero
+      if (!settings.powerCostPerKwh) {
+        updates.powerCostPerKwh = 0.144
+        hasUpdates = true
+      }
+
+      // Set default internet/colo cost if it's zero
+      if (!settings.internetColoMonthlyCost) {
+        updates.internetColoMonthlyCost = 100
+        hasUpdates = true
+      }
+
+      // Set default hardware mode if it's undefined
+      if (!settings.hardwareMode) {
+        updates.hardwareMode = "own"
+        hasUpdates = true
+      }
+
+      if (hasUpdates) {
+        updateSettings(updates)
+      }
+    }
+  }, [
+    settings.platform,
+    settings.serverCost,
+    settings.amortizationMonths,
+    settings.powerConsumptionKwh,
+    settings.powerCostPerKwh,
+    settings.internetColoMonthlyCost,
+    settings.hardwareMode,
+    updateSettings,
+  ])
+
+  // Calculate total monthly hardware cost
+  const totalMonthlyCost =
+    (hardwareMode === "own"
+      ? calculateAmortizedCost(settings.serverCost || 0, settings.amortizationMonths || 24)
+      : settings.monthlyRentalCost || 0) +
+    calculatePowerCost(settings.powerConsumptionKwh || 0, settings.powerCostPerKwh || 0) +
+    (settings.internetColoMonthlyCost || 0) +
+    (settings.networkSwitchNeeded
+      ? calculateAmortizedCost(settings.networkSwitchCost || 200, settings.amortizationMonths || 24)
+      : 0)
+
   return (
     <div className="space-y-6">
+      {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-900/30 mb-6">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Hardware & Operating Costs</h3>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Self-hosting requires hardware and ongoing operational expenses. Please ensure you've entered realistic
+                values for your setup.
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Current monthly cost: <span className="font-bold">{formatCurrency(totalMonthlyCost)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
         <h3 className="text-sm font-medium mb-2">Estimated Hardware Requirements</h3>
         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -954,56 +1054,224 @@ function HardwareHostingSettings({
         <div className="mt-2 text-xs">
           <strong>Recommended:</strong> {hardwareRequirements.recommendedHardware}
         </div>
+        {settings.platform === "self-hosted" && (
+          <div className="mt-2 text-xs">
+            <strong>Max Viewers per Channel:</strong> {hardwareRequirements.maxViewers || "N/A"}
+            {settings.networkInterface === "1gbe" && <span className="text-slate-500"> (15-20 for 1080p on 1GbE)</span>}
+            {settings.networkInterface === "10gbe" && (
+              <span className="text-slate-500"> (150-200 for 1080p on 10GbE)</span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="serverType">Server Type</Label>
-        <Select
-          value={settings.serverType}
-          onValueChange={(value) => {
-            const selectedOption = hardwareOptions.find((option) => option.value === value)
-            updateSettings({
-              serverType: value,
-              serverCost: selectedOption ? selectedOption.cost : settings.serverCost,
-            })
-          }}
-        >
-          <SelectTrigger id="serverType">
-            <SelectValue placeholder="Select server type" />
-          </SelectTrigger>
-          <SelectContent>
-            {hardwareOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label} ({option.specs})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Hardware for hosting services</p>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
-          <Label htmlFor="hardwareAvailable">Hardware Already Available?</Label>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Skip hardware purchase costs</p>
+        <Label>Hardware Acquisition Mode</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            type="button"
+            variant={hardwareMode === "own" ? "default" : "outline"}
+            className="w-full"
+            onClick={() => {
+              setHardwareMode("own")
+              updateSettings({ hardwareMode: "own" })
+            }}
+          >
+            Own Hardware
+          </Button>
+          <Button
+            type="button"
+            variant={hardwareMode === "rent" ? "default" : "outline"}
+            className="w-full"
+            onClick={() => {
+              setHardwareMode("rent")
+              updateSettings({ hardwareMode: "rent" })
+            }}
+          >
+            Rent / Colocate
+          </Button>
         </div>
-        <Switch
-          id="hardwareAvailable"
-          checked={settings.hardwareAvailable || false}
-          onCheckedChange={(checked) => updateSettings({ hardwareAvailable: checked })}
-        />
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Choose whether you'll purchase hardware or rent/colocate
+        </p>
+      </div>
+
+      {hardwareMode === "own" ? (
+        <>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="serverCost">Hardware Purchase Price ($)</Label>
+              <span className="text-sm font-mono">${settings.serverCost || 0}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Slider
+                id="serverCost"
+                min={0}
+                max={5000}
+                step={100}
+                value={[settings.serverCost || 800]}
+                onValueChange={(value) => updateSettings({ serverCost: value[0] })}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={settings.serverCost || 800}
+                onChange={(e) => updateSettings({ serverCost: Number(e.target.value) || 0 })}
+                className="w-24"
+              />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Cost of server hardware (Mac Mini: ~$800-1500, Mac Studio: ~$2000-4000)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="amortizationMonths">Amortization Period (months)</Label>
+              <span className="text-sm font-mono">{settings.amortizationMonths || 24} months</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Slider
+                id="amortizationMonths"
+                min={12}
+                max={60}
+                step={6}
+                value={[settings.amortizationMonths || 24]}
+                onValueChange={(value) => updateSettings({ amortizationMonths: value[0] })}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                min={1}
+                value={settings.amortizationMonths || 24}
+                onChange={(e) => updateSettings({ amortizationMonths: Number(e.target.value) || 24 })}
+                className="w-24"
+              />
+            </div>
+            <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+              <span>Period over which to spread hardware costs</span>
+              <span className="font-mono">
+                ≈ {formatCurrency(calculateAmortizedCost(settings.serverCost || 0, settings.amortizationMonths || 24))}
+                /mo
+              </span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <Label htmlFor="monthlyRentalCost">Monthly Rental/Colocation Cost ($)</Label>
+            <span className="text-sm font-mono">${settings.monthlyRentalCost || 0}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Slider
+              id="monthlyRentalCost"
+              min={0}
+              max={500}
+              step={10}
+              value={[settings.monthlyRentalCost || 100]}
+              onValueChange={(value) => updateSettings({ monthlyRentalCost: value[0] })}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              min={0}
+              value={settings.monthlyRentalCost || 100}
+              onChange={(e) => updateSettings({ monthlyRentalCost: Number(e.target.value) || 0 })}
+              className="w-24"
+            />
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Monthly cost for renting hardware or colocation (MacStadium: ~$100-200/mo)
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <Label htmlFor="powerConsumptionKwh">Power Consumption (kWh/month)</Label>
+          <span className="text-sm font-mono">{settings.powerConsumptionKwh || 0} kWh</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <Slider
+            id="powerConsumptionKwh"
+            min={0}
+            max={100}
+            step={1}
+            value={[settings.powerConsumptionKwh || 15]}
+            onValueChange={(value) => updateSettings({ powerConsumptionKwh: value[0] })}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            min={0}
+            value={settings.powerConsumptionKwh || 15}
+            onChange={(e) => updateSettings({ powerConsumptionKwh: Number(e.target.value) || 0 })}
+            className="w-24"
+          />
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Mac Mini (~15 kWh/mo), Mac Studio (~25 kWh/mo)</p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="serverCount">Server Count</Label>
-        <Input
-          id="serverCount"
-          type="number"
-          min={1}
-          value={settings.serverCount}
-          onChange={(e) => updateSettings({ serverCount: Number.parseInt(e.target.value) || 1 })}
-        />
-        <p className="text-sm text-slate-500 dark:text-slate-400">Number of servers for redundancy</p>
+        <div className="flex justify-between">
+          <Label htmlFor="powerCostPerKwh">Power Cost ($/kWh)</Label>
+          <span className="text-sm font-mono">${settings.powerCostPerKwh || 0}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <Slider
+            id="powerCostPerKwh"
+            min={0}
+            max={0.5}
+            step={0.01}
+            value={[settings.powerCostPerKwh || 0.144]}
+            onValueChange={(value) => updateSettings({ powerCostPerKwh: value[0] })}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            min={0}
+            step={0.001}
+            value={settings.powerCostPerKwh || 0.144}
+            onChange={(e) => updateSettings({ powerCostPerKwh: Number(e.target.value) || 0 })}
+            className="w-24"
+          />
+        </div>
+        <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+          <span>Average electricity cost in your area</span>
+          <span className="font-mono">
+            ≈ {formatCurrency(calculatePowerCost(settings.powerConsumptionKwh || 0, settings.powerCostPerKwh || 0))}/mo
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <Label htmlFor="internetColoMonthlyCost">Internet/Colocation Monthly Cost ($)</Label>
+          <span className="text-sm font-mono">${settings.internetColoMonthlyCost || 0}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <Slider
+            id="internetColoMonthlyCost"
+            min={0}
+            max={500}
+            step={10}
+            value={[settings.internetColoMonthlyCost || 100]}
+            onValueChange={(value) => updateSettings({ internetColoMonthlyCost: value[0] })}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            min={0}
+            value={settings.internetColoMonthlyCost || 100}
+            onChange={(e) => updateSettings({ internetColoMonthlyCost: Number(e.target.value) || 0 })}
+            className="w-24"
+          />
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Business-class fiber (1 Gbps): $99-300/mo, Colocation: $70-150/mo
+        </p>
       </div>
 
       <div className="flex items-center justify-between">
@@ -1018,36 +1286,50 @@ function HardwareHostingSettings({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="rackHostingLocation">Rack Hosting Location</Label>
-        <Select
-          value={settings.rackHostingLocation}
-          onValueChange={(value) => updateSettings({ rackHostingLocation: value })}
-        >
-          <SelectTrigger id="rackHostingLocation">
-            <SelectValue placeholder="Select hosting location" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="in-station">In-station</SelectItem>
-            <SelectItem value="colo">Colocation</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Where hardware is hosted</p>
-      </div>
-
-      {settings.rackHostingLocation === "colo" && (
-        <div className="space-y-2">
-          <Label htmlFor="rackCost">Rack Cost ($/U mo)</Label>
-          <Input
-            id="rackCost"
-            type="number"
-            min={0}
-            value={settings.rackCost}
-            onChange={(e) => updateSettings({ rackCost: Number.parseInt(e.target.value) || 0 })}
-          />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Monthly cost per rack unit</p>
+      {settings.networkSwitchNeeded && (
+        <div className="space-y-2 pl-4 border-l-2 border-blue-200 dark:border-blue-900">
+          <div className="flex justify-between">
+            <Label htmlFor="networkSwitchCost">Network Switch Cost ($)</Label>
+            <span className="text-sm font-mono">${settings.networkSwitchCost || 0}</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Slider
+              id="networkSwitchCost"
+              min={0}
+              max={1000}
+              step={50}
+              value={[settings.networkSwitchCost || 200]}
+              onValueChange={(value) => updateSettings({ networkSwitchCost: value[0] })}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              min={0}
+              value={settings.networkSwitchCost || 200}
+              onChange={(e) => updateSettings({ networkSwitchCost: Number(e.target.value) || 0 })}
+              className="w-24"
+            />
+          </div>
+          <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+            <span>Basic 1GbE: ~$50-100, 10GbE: ~$200-500</span>
+            <span className="font-mono">
+              ≈{" "}
+              {formatCurrency(
+                calculateAmortizedCost(settings.networkSwitchCost || 200, settings.amortizationMonths || 24),
+              )}
+              /mo
+            </span>
+          </div>
         </div>
       )}
+
+      <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+        <h3 className="text-md font-semibold mb-2">Total Monthly Hardware & Operating Cost</h3>
+        <div className="text-xl font-bold">{formatCurrency(totalMonthlyCost)}</div>
+        <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          This cost will be included in your total monthly expenses.
+        </div>
+      </div>
     </div>
   )
 }
@@ -1311,6 +1593,9 @@ function SelfHostedSettings({
   updateSettings: (settings: Partial<SettingsState>) => void
   validationResults: ValidationResult[]
 }) {
+  // Get hardware requirements to display max viewers
+  const hardwareRequirements = calculateHardwareRequirements(settings)
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -1373,6 +1658,16 @@ function SelfHostedSettings({
           </SelectContent>
         </Select>
         <p className="text-sm text-slate-500 dark:text-slate-400">Network interface for the streaming server</p>
+        {settings.networkInterface === "1gbe" && (
+          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            <strong>Capacity:</strong> ~15-20 concurrent viewers per channel at 1080p (5 Mbps)
+          </div>
+        )}
+        {settings.networkInterface === "10gbe" && (
+          <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+            <strong>Capacity:</strong> ~150-200 concurrent viewers per channel at 1080p (5 Mbps)
+          </div>
+        )}
       </div>
 
       {settings.networkInterface === "10gbe" && (

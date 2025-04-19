@@ -6,8 +6,8 @@ const MUX_PRICING = {
     "720p": 0.03,
     "1080p": 0.06,
   },
-  STORAGE: 0.0025,
-  DELIVERY: 0.0015,
+  STORAGE: 0.003,
+  DELIVERY: 0.00096, // Corrected Mux delivery rate
 }
 
 const CLOUDFLARE_PRICING = {
@@ -61,8 +61,11 @@ export function calculateCosts(settings: SettingsState): Costs {
       encodingCost += (24 * 30 * SELF_HOSTED_PRICING.COMPUTE["t3.medium"] * settings.channelCount) / 2
     }
 
-    // Live delivery costs
-    const liveDeliveryMinutes = liveMinutesPerMonth * settings.peakConcurrentViewers
+    // Live delivery costs - FIXED: Calculate average concurrent viewers instead of using peak
+    // For Mux, we need to calculate total view-minutes, not multiply by peak concurrency
+    // Assuming average viewers is about 40% of peak viewers for a typical broadcast pattern
+    const averageConcurrentViewers = Math.round(settings.peakConcurrentViewers * 0.4)
+    const liveDeliveryMinutes = liveMinutesPerMonth * averageConcurrentViewers
 
     if (settings.platform === "mux") {
       deliveryCost += liveDeliveryMinutes * MUX_PRICING.DELIVERY
@@ -88,8 +91,9 @@ export function calculateCosts(settings: SettingsState): Costs {
         storageCost += storageMinutes * SELF_HOSTED_PRICING.STORAGE["r2"]
       }
 
-      // VOD delivery costs
-      const deliveryMinutes = vodMinutes * settings.peakConcurrentVodViewers
+      // VOD delivery costs - FIXED: Use average concurrent VOD viewers
+      const averageConcurrentVodViewers = Math.round(settings.peakConcurrentVodViewers * 0.4)
+      const deliveryMinutes = vodMinutes * averageConcurrentVodViewers
 
       if (settings.vodProvider === "same-as-live" || settings.vodProvider === "mux") {
         deliveryCost += deliveryMinutes * MUX_PRICING.DELIVERY
@@ -143,8 +147,10 @@ export function calculateCosts(settings: SettingsState): Costs {
     settings.videoCdnProvider !== "none"
   ) {
     // Calculate video CDN costs based on delivery volume
+    // FIXED: Use average concurrent viewers instead of peak
+    const averageConcurrentViewers = Math.round(settings.peakConcurrentViewers * 0.4)
     const estimatedGbPerViewer = 0.3 // ~0.3GB per hour per viewer at 1080p
-    const viewerHours = settings.peakConcurrentViewers * settings.channelCount * 24 * 30
+    const viewerHours = averageConcurrentViewers * settings.channelCount * 24 * 30
     const estimatedGbPerMonth = viewerHours * estimatedGbPerViewer
 
     // Apply the appropriate egress rate
@@ -170,9 +176,32 @@ export function calculateCosts(settings: SettingsState): Costs {
 
   // Hardware costs
   if (settings.platform === "self-hosted" || settings.platform === "hybrid") {
-    if (!settings.hardwareAvailable) {
-      // Amortize server cost over 36 months
-      otherCost += (settings.serverCost * settings.serverCount) / 36
+    // Calculate hardware costs based on the mode
+    if (settings.hardwareMode === "own" || !settings.hardwareMode) {
+      // Amortize server cost
+      if (!settings.hardwareAvailable && settings.serverCost) {
+        const amortizationMonths = settings.amortizationMonths || 24
+        otherCost += (settings.serverCost * settings.serverCount) / amortizationMonths
+      }
+
+      // Add network switch cost if needed
+      if (settings.networkSwitchNeeded && settings.networkSwitchCost) {
+        const amortizationMonths = settings.amortizationMonths || 24
+        otherCost += settings.networkSwitchCost / amortizationMonths
+      }
+    } else if (settings.hardwareMode === "rent") {
+      // Add monthly rental cost
+      otherCost += settings.monthlyRentalCost || 0
+    }
+
+    // Add power costs
+    if (settings.powerConsumptionKwh && settings.powerCostPerKwh) {
+      otherCost += settings.powerConsumptionKwh * settings.powerCostPerKwh
+    }
+
+    // Add internet/colocation costs
+    if (settings.internetColoMonthlyCost) {
+      otherCost += settings.internetColoMonthlyCost
     }
   }
 

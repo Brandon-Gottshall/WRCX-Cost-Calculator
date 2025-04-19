@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { BarChart3, TrendingUp, Database, HardDrive, Globe, X, ChevronDown, ChevronUp, Info } from "lucide-react"
+import { BarChart3, TrendingUp, Database, HardDrive, Globe, X, ChevronDown } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Costs, SettingsState, Platform, RevenueCalculations } from "@/lib/types"
 import { formatCurrency } from "@/lib/utils"
@@ -68,6 +68,22 @@ interface CostPreviewProps {
   costs: Costs
   settings: SettingsState
   revenue?: RevenueCalculations
+}
+
+// Helper function to get the platform name
+function getPlatformName(platform: Platform): string {
+  switch (platform) {
+    case "mux":
+      return "Mux"
+    case "cloudflare":
+      return "Cloudflare"
+    case "self-hosted":
+      return "Self-Hosted"
+    case "hybrid":
+      return "Hybrid"
+    default:
+      return "Unknown"
+  }
 }
 
 // Now modify the CostPreview component to include the pricing assumptions in the detailed view
@@ -600,7 +616,8 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                           <td className="py-3 text-sm">
                             <div className="font-medium">Live Stream Delivery</div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {settings.channelCount} channel(s) × {settings.peakConcurrentViewers} viewers
+                              {settings.channelCount} channel(s) × {settings.peakConcurrentViewers} peak viewers
+                              <span className="italic"> (calculated with 40% average)</span>
                             </div>
                           </td>
                           <td className="py-3 text-right font-mono text-sm">{formatCurrency(costs.delivery * 0.7)}</td>
@@ -610,7 +627,8 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                             <td className="py-3 text-sm">
                               <div className="font-medium">VOD Delivery</div>
                               <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Based on {settings.peakConcurrentVodViewers} concurrent VOD viewers
+                                Based on {settings.peakConcurrentVodViewers} peak VOD viewers
+                                <span className="italic"> (calculated with 40% average)</span>
                               </div>
                             </td>
                             <td className="py-3 text-right font-mono text-sm">
@@ -650,11 +668,22 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                               Based on your selections:
                             </div>
 
+                            {/* Delivery calculation explanation */}
+                            <div className="text-xs bg-amber-50 dark:bg-amber-900/20 p-2 rounded-md">
+                              <span className="font-medium">Important note about delivery costs:</span>
+                              <p className="mt-1">
+                                Delivery costs are calculated using average concurrent viewers (estimated at 40% of
+                                peak) rather than peak concurrent viewers. This provides a more realistic cost estimate,
+                                as viewership fluctuates throughout the day.
+                              </p>
+                            </div>
+
                             {/* Live Delivery details */}
                             <div className="text-xs">
                               <span className="text-slate-600 dark:text-slate-400">Live viewers:</span>{" "}
                               <span className="font-mono">
-                                {settings.peakConcurrentViewers} peak concurrent viewers
+                                {settings.peakConcurrentViewers} peak concurrent viewers (≈{" "}
+                                {Math.round(settings.peakConcurrentViewers * 0.4)} average)
                               </span>
                             </div>
                             <div className="text-xs">
@@ -672,8 +701,8 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                             <div className="text-xs">
                               <span className="text-slate-600 dark:text-slate-400">Calculation:</span>{" "}
                               <span className="font-mono">
-                                {settings.channelCount} channels × {settings.peakConcurrentViewers} viewers × 24 hours ×
-                                60 min × 30 days × $
+                                {settings.channelCount} channels × {Math.round(settings.peakConcurrentViewers * 0.4)}{" "}
+                                avg viewers × 24 hours × 60 min × 30 days × $
                                 {settings.platform === "mux"
                                   ? "0.00096"
                                   : settings.platform === "cloudflare"
@@ -690,7 +719,8 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                 <div className="text-xs">
                                   <span className="text-slate-600 dark:text-slate-400">VOD viewers:</span>{" "}
                                   <span className="font-mono">
-                                    {settings.peakConcurrentVodViewers} concurrent viewers
+                                    {settings.peakConcurrentVodViewers} peak viewers (≈{" "}
+                                    {Math.round(settings.peakConcurrentVodViewers * 0.4)} average)
                                   </span>
                                 </div>
                                 <div className="text-xs">
@@ -704,8 +734,8 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                 <div className="text-xs">
                                   <span className="text-slate-600 dark:text-slate-400">Calculation:</span>{" "}
                                   <span className="font-mono">
-                                    {settings.hoursPerDayArchived} hours × {settings.peakConcurrentVodViewers} viewers ×
-                                    30 days × $
+                                    {settings.hoursPerDayArchived} hours ×{" "}
+                                    {Math.round(settings.peakConcurrentVodViewers * 0.4)} avg viewers × 30 days × $
                                     {settings.platform === "mux" || settings.vodProvider === "mux"
                                       ? "0.00096"
                                       : settings.platform === "cloudflare" || settings.vodProvider === "cloudflare"
@@ -920,63 +950,50 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                                   <span className="text-slate-600 dark:text-slate-400">Email cost:</span>{" "}
                                   <span className="font-mono">$0.10 per 1,000 emails</span>
                                 </div>
-                                <div className="text-xs">
-                                  <span className="text-slate-600 dark:text-slate-400">Calculation:</span>{" "}
-                                  <span className="font-mono">
-                                    {settings.monthlyEmailVolume} emails × $0.10 / 1,000 = $
-                                    {((settings.monthlyEmailVolume / 1000) * 0.1).toFixed(2)}/mo
-                                  </span>
-                                </div>
                               </>
                             )}
 
                             {/* Analytics details */}
-                            {settings.viewerAnalytics !== "none" && (
+                            {(settings.viewerAnalytics !== "none" || settings.siteAnalytics !== "none") && (
                               <>
-                                <div className="text-xs mt-2 font-medium">Viewer Analytics:</div>
-                                <div className="text-xs">
-                                  <span className="text-slate-600 dark:text-slate-400">Service:</span>{" "}
-                                  <span className="font-mono">{settings.viewerAnalytics}</span>
-                                </div>
-                                <div className="text-xs">
-                                  <span className="text-slate-600 dark:text-slate-400">Cost:</span>{" "}
-                                  <span className="font-mono">
-                                    {settings.viewerAnalytics === "mux-data" && settings.platform === "mux"
-                                      ? "Included with Mux"
-                                      : settings.viewerAnalytics === "cf-analytics" &&
-                                          settings.platform === "cloudflare"
-                                        ? "Included with Cloudflare"
-                                        : settings.viewerAnalytics === "mux-data"
-                                          ? "$50/mo"
-                                          : settings.viewerAnalytics === "cf-analytics"
-                                            ? "$20/mo"
-                                            : settings.viewerAnalytics === "self-host-grafana"
-                                              ? "$10/mo"
-                                              : "Free"}
-                                  </span>
-                                </div>
-                              </>
-                            )}
-
-                            {settings.siteAnalytics !== "none" && (
-                              <>
-                                <div className="text-xs mt-2 font-medium">Site Analytics:</div>
-                                <div className="text-xs">
-                                  <span className="text-slate-600 dark:text-slate-400">Service:</span>{" "}
-                                  <span className="font-mono">{settings.siteAnalytics}</span>
-                                </div>
-                                <div className="text-xs">
-                                  <span className="text-slate-600 dark:text-slate-400">Cost:</span>{" "}
-                                  <span className="font-mono">
-                                    {settings.siteAnalytics === "plausible"
-                                      ? "$9/mo"
-                                      : settings.siteAnalytics === "fathom"
-                                        ? "$14/mo"
-                                        : settings.siteAnalytics === "matomo"
-                                          ? "$19/mo"
-                                          : "Free"}
-                                  </span>
-                                </div>
+                                <div className="text-xs mt-2 font-medium">Analytics:</div>
+                                {settings.viewerAnalytics !== "none" && (
+                                  <div className="text-xs">
+                                    <span className="text-slate-600 dark:text-slate-400">Viewer analytics:</span>{" "}
+                                    <span className="font-mono">
+                                      {settings.viewerAnalytics} (
+                                      {settings.viewerAnalytics === "mux-data" && settings.platform === "mux"
+                                        ? "Free"
+                                        : settings.viewerAnalytics === "cf-analytics" &&
+                                            settings.platform === "cloudflare"
+                                          ? "Free"
+                                          : settings.viewerAnalytics === "mux-data"
+                                            ? "$50/mo"
+                                            : settings.viewerAnalytics === "cf-analytics"
+                                              ? "$20/mo"
+                                              : settings.viewerAnalytics === "self-host-grafana"
+                                                ? "$10/mo"
+                                                : "Free"}
+                                      )
+                                    </span>
+                                  </div>
+                                )}
+                                {settings.siteAnalytics !== "none" && (
+                                  <div className="text-xs">
+                                    <span className="text-slate-600 dark:text-slate-400">Site analytics:</span>{" "}
+                                    <span className="font-mono">
+                                      {settings.siteAnalytics} (
+                                      {settings.siteAnalytics === "plausible"
+                                        ? "$9/mo"
+                                        : settings.siteAnalytics === "fathom"
+                                          ? "$14/mo"
+                                          : settings.siteAnalytics === "matomo"
+                                            ? "$19/mo"
+                                            : "Free"}
+                                      )
+                                    </span>
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>
@@ -985,277 +1002,6 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
                     </div>
                   </div>
                 </div>
-
-                {/* Hardware Costs */}
-                {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-md bg-purple-100 dark:bg-purple-900/30">
-                        <HardDrive className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <h3 className="text-xl font-semibold">Hardware Costs</h3>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-slate-200 dark:border-slate-700">
-                            <th className="text-left py-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-                              Item
-                            </th>
-                            <th className="text-right py-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-                              Cost
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {!settings.hardwareAvailable && (
-                            <tr className="border-b border-slate-200 dark:border-slate-700">
-                              <td className="py-3 text-sm">
-                                <div className="font-medium">
-                                  {settings.serverType.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} (
-                                  {settings.serverCount})
-                                </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                  Amortized over 36 months
-                                </div>
-                              </td>
-                              <td className="py-3 text-right font-mono text-sm">
-                                {formatCurrency((settings.serverCost * settings.serverCount) / 36)}
-                              </td>
-                            </tr>
-                          )}
-                          {settings.networkSwitchNeeded && (
-                            <tr className="border-b border-slate-200 dark:border-slate-700">
-                              <td className="py-3 text-sm">
-                                <div className="font-medium">Network Switch</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">Amortized cost</div>
-                              </td>
-                              <td className="py-3 text-right font-mono text-sm">{formatCurrency(20)}</td>
-                            </tr>
-                          )}
-                          {settings.rackHostingLocation === "colo" && (
-                            <tr className="border-b border-slate-200 dark:border-slate-700">
-                              <td className="py-3 text-sm">
-                                <div className="font-medium">Colocation Costs</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">
-                                  {settings.rackCost} per rack unit
-                                </div>
-                              </td>
-                              <td className="py-3 text-right font-mono text-sm">
-                                {formatCurrency(
-                                  settings.rackCost *
-                                    (settings.serverType.includes("studio") ? 2 : 1) *
-                                    settings.serverCount,
-                                )}
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-
-                      {/* Hardware Pricing Assumptions Dropdown */}
-                      <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
-                        <Collapsible>
-                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
-                            <ChevronDown className="h-4 w-4" />
-                            <span>View Hardware Assumptions</span>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="pt-3">
-                            <div className="space-y-3 pl-4 border-l-2 border-blue-200 dark:border-blue-800">
-                              <div className="text-xs bg-purple-50 dark:bg-purple-900/30 p-2 rounded-md font-medium">
-                                Platform: <span className="font-bold">{getPlatformName(settings.platform)}</span>
-                              </div>
-
-                              <div className="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                                Selected Hardware Configuration:
-                              </div>
-
-                              <div className="text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Server type:</span>{" "}
-                                <span className="font-mono">{settings.serverType.replace(/-/g, " ")}</span>
-                              </div>
-
-                              <div className="text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Server count:</span>{" "}
-                                <span className="font-mono">{settings.serverCount}</span>
-                              </div>
-
-                              <div className="text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Hardware available:</span>{" "}
-                                <span className="font-mono">{settings.hardwareAvailable ? "Yes" : "No"}</span>
-                              </div>
-
-                              <div className="text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Hosting location:</span>{" "}
-                                <span className="font-mono">{settings.rackHostingLocation}</span>
-                              </div>
-
-                              <div className="text-xs mt-2 font-medium">Hardware Costs:</div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Mac Mini (M2 Pro)</span>
-                                <span className="font-mono">$1,299 ($36/mo over 36 months)</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Mac Studio (M2 Max)</span>
-                                <span className="font-mono">$1,999 ($56/mo over 36 months)</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Network Switch</span>
-                                <span className="font-mono">$720 ($20/mo over 36 months)</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-slate-600 dark:text-slate-400">Rack Space (1U)</span>
-                                <span className="font-mono">${settings.rackCost}/month</span>
-                              </div>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Technical Parameters Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-blue-100 dark:bg-blue-900/30">
-                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold">Technical Parameters</h3>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4">
-                    <Collapsible>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
-                        <ChevronDown className="h-4 w-4" />
-                        <span>View Technical Parameters</span>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-3">
-                        <div className="space-y-4 pl-4 border-l-2 border-blue-200 dark:border-blue-800">
-                          <div className="text-xs bg-blue-50 dark:bg-blue-900/30 p-2 rounded-md font-medium">
-                            Platform: <span className="font-bold">{getPlatformName(settings.platform)}</span>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-medium mb-1">Video Bitrates & Data Usage</div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">1080p @ 30fps (H.264):</span>
-                              <span className="font-mono">~6 Mbps = ~0.0439 GB/min</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">720p @ 30fps (H.264):</span>
-                              <span className="font-mono">~3 Mbps = ~0.0225 GB/min</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">4K @ 30fps (H.264):</span>
-                              <span className="font-mono">~15 Mbps = ~0.1125 GB/min</span>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-medium mb-1">Hardware Limitations</div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">M2 Pro Mac Mini:</span>
-                              <span className="font-mono">Limited by single encode engine</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">1GbE Network Interface:</span>
-                              <span className="font-mono">~125 MB/s = ~7.5 GB/min</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Max Direct Viewers (1GbE):</span>
-                              <span className="font-mono">~170 viewers @ 1080p</span>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-medium mb-1">Encoding Ladder Details</div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">1080p Tri-ladder:</span>
-                              <span className="font-mono">1080p + 720p + 480p variants</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">720p Tri-ladder:</span>
-                              <span className="font-mono">720p + 480p + 360p variants</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">4K Tri-ladder:</span>
-                              <span className="font-mono">4K + 1080p + 720p variants</span>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-medium mb-1">Your Configuration</div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Selected encoding preset:</span>
-                              <span className="font-mono">{settings.encodingPreset}</span>
-                            </div>
-                            <div className="text-xs flex justify-between">
-                              <span className="text-slate-600 dark:text-slate-400">Platform:</span>
-                              <span className="font-mono">{getPlatformName(settings.platform)}</span>
-                            </div>
-                            {(settings.platform === "self-hosted" || settings.platform === "hybrid") && (
-                              <>
-                                <div className="text-xs flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Server type:</span>
-                                  <span className="font-mono">{settings.serverType.replace(/-/g, " ")}</span>
-                                </div>
-                                <div className="text-xs flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Network interface:</span>
-                                  <span className="font-mono">{settings.networkInterface || "1GbE"}</span>
-                                </div>
-                                <div className="text-xs flex justify-between">
-                                  <span className="text-slate-600 dark:text-slate-400">Transcoding engine:</span>
-                                  <span className="font-mono">{settings.transcodingEngine || "hardware"}</span>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                </div>
-
-                {/* Summary */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
-                  <h3 className="text-xl font-bold mb-4">Cost Summary</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Encoding</span>
-                      <span className="font-mono">{formatCurrency(costs.encoding)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Storage</span>
-                      <span className="font-mono">{formatCurrency(costs.storage)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Delivery</span>
-                      <span className="font-mono">{formatCurrency(costs.delivery)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Other</span>
-                      <span className="font-mono">{formatCurrency(costs.other)}</span>
-                    </div>
-                    <div className="pt-3 border-t border-blue-200 dark:border-blue-800 flex justify-between">
-                      <span className="font-bold">Monthly Total</span>
-                      <span className="font-mono font-bold">{formatCurrency(totalMonthlyCost)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
-                      <span>Annual Cost</span>
-                      <span className="font-mono">{formatCurrency(totalMonthlyCost * 12)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowDetailView(false)}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                >
-                  <ChevronUp size={16} />
-                  <span className="font-medium">Close Detailed View</span>
-                </button>
               </div>
             </div>
           </motion.div>
@@ -1263,19 +1009,4 @@ export function CostPreview({ costs, settings, revenue }: CostPreviewProps) {
       </CardContent>
     </Card>
   )
-}
-
-function getPlatformName(platform: Platform): string {
-  switch (platform) {
-    case "mux":
-      return "Mux"
-    case "cloudflare":
-      return "Cloudflare Stream"
-    case "self-hosted":
-      return "Self-Hosted"
-    case "hybrid":
-      return "Hybrid"
-    default:
-      return "Unknown"
-  }
 }

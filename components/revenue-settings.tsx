@@ -110,6 +110,27 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
+                      <Label htmlFor="fillRate">Fill Rate (%)</Label>
+                      <span className="text-sm font-mono">{revenue.fillRate?.toFixed(0) || "100"}%</span>
+                    </div>
+                    <Slider
+                      id="fillRate"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[revenue.fillRate || 100]}
+                      onValueChange={(value) => updateRevenue({ fillRate: value[0] })}
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Percentage of planned ad slots that are actually sold & delivered. Unsold inventory earns $0.
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Typical ranges: 30-80% for programmatic-only, 80%+ with direct sales.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
                       <Label htmlFor="cpmRate">CPM Rate</Label>
                       <span className="text-sm font-mono">${revenue.cpmRate.toFixed(2)}</span>
                     </div>
@@ -214,7 +235,7 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
                   <p className="text-xs text-green-700 dark:text-green-400">
                     {revenue.averageDailyUniqueViewers.toLocaleString()} viewers ×{" "}
                     {revenue.averageViewingHoursPerViewer.toFixed(1)} hours × {revenue.adSpotsPerHour.toFixed(1)} spots
-                    × ${revenue.cpmRate.toFixed(2)} CPM ÷ 1,000 × 30 days
+                    × {revenue.fillRate || 100}% fill rate × ${revenue.cpmRate.toFixed(2)} CPM ÷ 1,000 × 30 days
                     {revenue.peakTimeMultiplier && revenue.peakTimeMultiplier !== 1
                       ? ` × ${revenue.peakTimeMultiplier.toFixed(2)} peak multiplier`
                       : ""}
@@ -379,7 +400,7 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
                   <p className="text-xs text-green-700 dark:text-green-400">
                     {revenue.monthlyPaidBlocks} blocks × ${revenue.ratePerBlock.toFixed(2)} per block
                     {revenue.premiumSponsorshipEnabled
-                      ? ` + ${revenue.premiumSponsorshipCount || 0} premium sponsors × $${(revenue.premiumSponsorshipRate || 0).toFixed(2)}`
+                      ? ` + ${revenue.premiumSponsorshipCount || 0} premium sponsors × ${(revenue.premiumSponsorshipRate || 0).toFixed(2)}`
                       : ""}
                   </p>
                 </div>
@@ -447,6 +468,27 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
                       onValueChange={(value) => updateRevenue({ adSpotsPerVodView: value[0] })}
                     />
                     <p className="text-xs text-slate-500 dark:text-slate-400">Number of ad spots per VOD view</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="vodFillRate">Fill Rate (%)</Label>
+                      <span className="text-sm font-mono">{revenue.vodFillRate?.toFixed(0) || "100"}%</span>
+                    </div>
+                    <Slider
+                      id="vodFillRate"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[revenue.vodFillRate || 100]}
+                      onValueChange={(value) => updateRevenue({ vodFillRate: value[0] })}
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Percentage of VOD ad slots that are actually sold & delivered. Unsold inventory earns $0.
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      VOD typically has higher fill rates than live (40-90%).
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -549,8 +591,8 @@ export function RevenueSettings({ revenue, updateRevenue }: RevenueSettingsProps
                     VOD Ad Revenue Calculation
                   </h3>
                   <p className="text-xs text-green-700 dark:text-green-400">
-                    {revenue.monthlyVodViews.toLocaleString()} views × {revenue.adSpotsPerVodView.toFixed(1)} spots × $
-                    {revenue.vodCpmRate.toFixed(2)} CPM ÷ 1,000
+                    {revenue.monthlyVodViews.toLocaleString()} views × {revenue.adSpotsPerVodView.toFixed(1)} spots ×
+                    {revenue.vodFillRate || 100}% fill rate × ${revenue.vodCpmRate.toFixed(2)} CPM ÷ 1,000
                     {revenue.vodSkipRate ? ` × (1 - ${(revenue.vodSkipRate * 100).toFixed(0)}% skip rate)` : ""}
                     {revenue.vodCompletionRate && revenue.vodCompletionRate !== 1
                       ? ` × ${(revenue.vodCompletionRate * 100).toFixed(0)}% completion rate`
