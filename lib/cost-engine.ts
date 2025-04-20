@@ -78,8 +78,12 @@ export function calculateCosts(settings: SettingsState): Costs {
 
   // Live streaming costs - only calculate if streaming is enabled
   if (settings.streamEnabled !== false) {
+    // Ensure channels array exists before filtering
+    const channels = settings.channels || []
+
     // Count only enabled channels
-    const enabledChannelCount = settings.channels.filter((channel) => channel.enabled !== false).length
+    const enabledChannelCount = channels.filter((channel) => channel.enabled !== false).length || 1
+
     // Use enabledChannelCount instead of settings.channelCount
     const liveMinutesPerMonth = minutesPerMonth(24) * enabledChannelCount
 

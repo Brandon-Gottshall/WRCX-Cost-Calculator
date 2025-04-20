@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface StickyCostContainerProps {
   children: React.ReactNode
@@ -13,11 +12,12 @@ interface StickyCostContainerProps {
 
 export function StickyCostContainer({ children, className }: StickyCostContainerProps) {
   const [isSticky, setIsSticky] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollY = window.scrollY
-      setIsSticky(scrollY > 100) // Start sticking after scrolling 100px
+      const scrollPosition = window.scrollY
+      setIsSticky(scrollPosition > 100)
     }
 
     window.addEventListener("scroll", handleScroll)
@@ -25,22 +25,18 @@ export function StickyCostContainer({ children, className }: StickyCostContainer
   }, [])
 
   return (
-    <div className={cn("space-y-6 relative", className)}>
-      <AnimatePresence>
-        {isSticky && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 shadow-md py-2"
-          >
-            <div className="container mx-auto max-w-7xl px-4">
-              <div className="text-lg font-bold">Cost Summary</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className={cn("space-y-6", isSticky ? "pt-16" : "")}>{children}</div>
+    <div
+      className={cn(
+        "transition-all duration-300 ease-in-out",
+        isSticky
+          ? isMobile
+            ? "fixed bottom-0 left-0 right-0 z-50 p-4 pb-24 bg-background/95 backdrop-blur-sm shadow-lg border-t max-h-[70vh] overflow-y-auto"
+            : "fixed top-4 right-4 z-50 max-w-md shadow-lg border rounded-lg bg-background/95 backdrop-blur-sm max-h-[90vh] overflow-y-auto"
+          : "relative",
+        className,
+      )}
+    >
+      {children}
     </div>
   )
 }

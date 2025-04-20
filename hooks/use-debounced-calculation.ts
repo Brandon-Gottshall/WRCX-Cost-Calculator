@@ -1,60 +1,70 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import type { SettingsState, Costs, RevenueCalculations } from "@/lib/types"
+import { useState, useEffect, useCallback } from "react"
 import { calculateCosts } from "@/lib/cost-engine"
 import { calculateRevenue } from "@/lib/revenue-engine"
+import type { Costs, SettingsState, RevenueCalculations } from "@/lib/types"
 
-interface CalculationResult {
-  costs: Costs
-  revenue: RevenueCalculations | undefined
-  isCalculating: boolean
+// Default costs object
+const defaultCosts: Costs = {
+  encoding: 0,
+  storage: 0,
+  delivery: 0,
+  other: 0,
 }
 
-export function useDebouncedCalculation(settings: SettingsState, debounceMs = 200): CalculationResult {
-  const [costs, setCosts] = useState<Costs>(() => calculateCosts(settings))
-  const [revenue, setRevenue] = useState<RevenueCalculations | undefined>(() =>
-    calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories),
-  )
+// Default revenue object
+const defaultRevenue: RevenueCalculations = {
+  liveAdRevenue: 0,
+  paidProgrammingRevenue: 0,
+  vodAdRevenue: 0,
+  totalRevenue: 0,
+  netOperatingProfit: 0,
+  channelRevenues: [],
+  vodCategoryRevenues: [],
+}
+
+export function useDebouncedCalculation(settings: SettingsState, delay = 300) {
+  const [costs, setCosts] = useState<Costs>(defaultCosts)
+  const [revenue, setRevenue] = useState<RevenueCalculations>(defaultRevenue)
   const [isCalculating, setIsCalculating] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const latestSettingsRef = useRef(settings)
-
-  // Update the ref whenever settings change
-  useEffect(() => {
-    latestSettingsRef.current = settings
-
-    // Set calculating state immediately
+  const recalculate = useCallback(() => {
     setIsCalculating(true)
+    setError(null)
 
-    // Clear any existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-    }
+    // Use setTimeout to simulate a delay and allow the UI to update
+    setTimeout(() => {
+      try {
+        // Calculate costs
+        const calculatedCosts = calculateCosts(settings)
+        setCosts(calculatedCosts || defaultCosts)
 
-    // Set a new timeout for the debounced calculation
-    timeoutRef.current = setTimeout(() => {
-      const newCosts = calculateCosts(latestSettingsRef.current)
-      const newRevenue = calculateRevenue(
-        latestSettingsRef.current.revenue,
-        newCosts,
-        latestSettingsRef.current.channels,
-        latestSettingsRef.current.vodCategories,
-      )
-
-      setCosts(newCosts)
-      setRevenue(newRevenue)
-      setIsCalculating(false)
-    }, debounceMs)
-
-    // Cleanup on unmount
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current)
+        // Calculate revenue
+        const calculatedRevenue = calculateRevenue(
+          settings.revenue,
+          calculatedCosts || defaultCosts,
+          settings.channels || [],
+          settings.vodCategories || [],
+        )
+        setRevenue(calculatedRevenue || defaultRevenue)
+      } catch (err) {
+        console.error("Error calculating costs or revenue:", err)
+        setError(err instanceof Error ? err : new Error(String(err)))
+        // Set default values on error
+        setCosts(defaultCosts)
+        setRevenue(defaultRevenue)
+      } finally {
+        setIsCalculating(false)
       }
-    }
-  }, [settings, debounceMs])
+    }, delay)
+  }, [settings, delay])
 
-  return { costs, revenue, isCalculating }
+  // Recalculate when settings change
+  useEffect(() => {
+    recalculate()
+  }, [recalculate])
+
+  return { costs, revenue, isCalculating, error, recalculate }
 }

@@ -22,6 +22,7 @@ export interface ChannelStatistics {
   liveHours: number // NEW: "Live Hours/Day" – hours of new live content broadcast each day
   vodUniques: number // NEW: "Daily VOD Viewers" – unique on-demand viewers per day
   vodWatchMin: number // NEW: "Avg VOD Watch Time (min)" – average minutes each watches VOD
+  enabled?: boolean
 }
 
 export interface VodStatistics {
@@ -201,3 +202,20 @@ export interface RevenueCalculations {
   vodCategoryRevenues: { categoryId: string; revenue: number }[]
   premiumSponsorshipRevenue?: number
 }
+
+export interface MonthlyCosts {
+  encoding: number
+  storage: number
+  delivery: number
+  infrastructure: number
+  total: number
+}
+
+export interface CostBreakdownData {
+  monthlyCosts: MonthlyCosts
+  annualCost: number
+}
+
+export interface CostBreakdown extends Costs {}
+
+export interface RevenueBreakdown extends RevenueCalculations {}

@@ -99,13 +99,8 @@ export default function Home() {
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
   const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
-  // Calculate costs based on current settings
-  // const costs = calculateCosts(settings)
-  // Calculate revenue based on current settings
-  // const revenue = calculateRevenue(settings.revenue, costs, settings.channels, settings.vodCategories)
-
-  // Use debounced calculations instead
-  const { costs, revenue, isCalculating } = useDebouncedCalculation(settings)
+  // Use debounced calculations
+  const { costs, revenue, isCalculating, recalculate } = useDebouncedCalculation(settings)
 
   // Validate settings
   const validationResults = validateSettings(settings)
