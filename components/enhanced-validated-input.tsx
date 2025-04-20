@@ -104,7 +104,7 @@ export function EnhancedValidatedInput({
     <div className={cn("flex flex-col space-y-1", className)}>
       <Label htmlFor={id} className="min-h-[1.5rem] text-sm font-medium">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-red-700 ml-1">*</span>}
       </Label>
 
       <InputFeedbackWrapper isCalculating={isCalculating}>
@@ -119,7 +119,7 @@ export function EnhancedValidatedInput({
           min={min}
           max={max}
           step={step}
-          className={cn(error ? "border-destructive" : "", "focus:outline-offset-2")}
+          className={cn(error ? "border-destructive" : "", "focus:outline focus:outline-offset-2")}
           required={required}
           inputMode={inputMode}
           pattern={pattern}
@@ -129,7 +129,7 @@ export function EnhancedValidatedInput({
       </InputFeedbackWrapper>
 
       {error && (
-        <p id={`${id}-error`} className="text-xs text-red-600 mt-1">
+        <p id={`${id}-error`} className="text-xs text-red-700 mt-1">
           {error}
         </p>
       )}

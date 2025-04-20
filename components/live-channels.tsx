@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, type KeyboardEvent } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -200,6 +198,14 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
     }))
   }
 
+  // Handle keyboard events for accordion headers
+  const handleAccordionKeyDown = (e: KeyboardEvent<HTMLButtonElement>, channelId: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      toggleAdvancedSettings(channelId)
+    }
+  }
+
   return (
     <Card className="border-slate-200 dark:border-slate-800">
       <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900/30 px-3 sm:px-4 py-3">
@@ -219,7 +225,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
             id="streamEnabled"
             checked={settings.streamEnabled !== false}
             onCheckedChange={(checked) => updateSettings({ streamEnabled: checked })}
-            className="focus:outline-offset-2"
+            className="focus:outline focus:outline-offset-2"
           />
         </div>
 
@@ -238,7 +244,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                   value={settings.encodingPreset}
                   onValueChange={(value) => updateSettings({ encodingPreset: value })}
                 >
-                  <SelectTrigger id="encodingPreset" className="focus:outline-offset-2">
+                  <SelectTrigger id="encodingPreset" className="focus:outline focus:outline-offset-2">
                     <SelectValue placeholder="Select encoding preset" />
                   </SelectTrigger>
                   <SelectContent>
@@ -271,7 +277,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
               {settings.channels.length > 0 ? (
                 <div className="overflow-x-auto -mx-2 px-2">
                   <table className="w-full border-collapse" aria-label="Channel Statistics">
-                    <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                    <thead className="sticky top-0 bg-white dark:bg-slate-900 z-10">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
                           On
@@ -292,7 +298,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                             onClick={() => setIsAdding(true)}
                             size="sm"
                             disabled={isAdding}
-                            className="focus:outline-offset-2"
+                            className="focus:outline focus:outline-offset-2"
                           >
                             <PlusCircle className="h-4 w-4" />
                             <span>Add Channel</span>
@@ -313,14 +319,14 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                     onCheckedChange={(checked) =>
                                       setEditingChannel({ ...editingChannel, enabled: checked })
                                     }
-                                    className="scale-75 focus:outline-offset-2"
+                                    className="scale-75 focus:outline focus:outline-offset-2"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
                                   <Input
                                     value={editingChannel.name}
                                     onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
-                                    className="w-full text-sm focus:outline-offset-2"
+                                    className="w-full text-sm focus:outline focus:outline-offset-2"
                                   />
                                 </td>
                                 <td className="px-4 py-2">
@@ -334,7 +340,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                     onChange={(e) =>
                                       setEditingChannel({ ...editingChannel, viewership: Number(e.target.value) })
                                     }
-                                    className="w-full text-sm text-right focus:outline-offset-2"
+                                    className="w-full text-sm text-right focus:outline focus:outline-offset-2"
                                   />
                                 </td>
                                 <td className="px-4 py-2 text-right font-mono text-xs">
@@ -346,7 +352,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => toggleAdvancedSettings(channel.id)}
-                                      className="h-7 p-1 focus:outline-offset-2"
+                                      onKeyDown={(e) => handleAccordionKeyDown(e, channel.id)}
+                                      className="h-7 p-1 focus:outline focus:outline-offset-2"
+                                      aria-expanded={showAdvancedSettings[channel.id] ? "true" : "false"}
+                                      aria-controls={`advanced-settings-${channel.id}`}
                                     >
                                       {showAdvancedSettings[channel.id] ? (
                                         <ChevronUp className="h-3 w-3" />
@@ -361,7 +370,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={handleUpdateChannel}
-                                      className="h-7 w-7 p-0 focus:outline-offset-2"
+                                      className="h-7 w-7 p-0 focus:outline focus:outline-offset-2"
                                     >
                                       <Save className="h-3 w-3" />
                                       <span className="sr-only">Save channel</span>
@@ -370,7 +379,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => setEditingChannel(null)}
-                                      className="h-7 w-7 p-0 focus:outline-offset-2"
+                                      className="h-7 w-7 p-0 focus:outline focus:outline-offset-2"
                                     >
                                       <X className="h-3 w-3" />
                                       <span className="sr-only">Cancel editing</span>
@@ -392,7 +401,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                           ),
                                         })
                                       }}
-                                      className="scale-75 focus:outline-offset-2"
+                                      className="scale-75 focus:outline focus:outline-offset-2"
                                       aria-label={`Toggle ${channel.name} channel`}
                                     />
                                   </div>
@@ -414,7 +423,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => toggleAdvancedSettings(channel.id)}
-                                      className="h-7 p-1 focus:outline-offset-2"
+                                      onKeyDown={(e) => handleAccordionKeyDown(e, channel.id)}
+                                      className="h-7 p-1 focus:outline focus:outline-offset-2"
+                                      aria-expanded={showAdvancedSettings[channel.id] ? "true" : "false"}
+                                      aria-controls={`advanced-settings-${channel.id}`}
                                     >
                                       {showAdvancedSettings[channel.id] ? (
                                         <ChevronUp className="h-3 w-3" />
@@ -429,7 +441,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => setEditingChannel(channel)}
-                                      className="h-7 w-7 p-0 focus:outline-offset-2"
+                                      className="h-7 w-7 p-0 focus:outline focus:outline-offset-2"
                                     >
                                       <Edit className="h-3 w-3" />
                                       <span className="sr-only">Edit channel</span>
@@ -438,7 +450,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => handleDeleteChannel(channel.id)}
-                                      className="h-7 w-7 p-0 focus:outline-offset-2"
+                                      className="h-7 w-7 p-0 focus:outline focus:outline-offset-2"
                                     >
                                       <Trash2 className="h-3 w-3" />
                                       <span className="sr-only">Delete channel</span>
@@ -453,7 +465,12 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                           {showAdvancedSettings[channel.id] && (
                             <tr className="bg-slate-50 dark:bg-slate-800/50">
                               <td colSpan={5} className="px-4 py-2">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-2">
+                                <div
+                                  id={`advanced-settings-${channel.id}`}
+                                  role="region"
+                                  aria-labelledby={`advanced-button-${channel.id}`}
+                                  className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-2"
+                                >
                                   {editingChannel?.id === channel.id ? (
                                     // Editing mode - advanced fields
                                     <>
@@ -469,7 +486,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                         >
                                           <SelectTrigger
                                             id={`encoding-${channel.id}`}
-                                            className="focus:outline-offset-2"
+                                            className="focus:outline focus:outline-offset-2"
                                           >
                                             <SelectValue placeholder="Select encoding preset" />
                                           </SelectTrigger>
@@ -510,7 +527,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                               averageRetentionMinutes: Number(e.target.value),
                                             })
                                           }
-                                          className="focus:outline-offset-2"
+                                          className="focus:outline focus:outline-offset-2"
                                         />
                                       </div>
 
@@ -532,7 +549,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                               adSpotsPerHour: Number(e.target.value),
                                             })
                                           }
-                                          className="focus:outline-offset-2"
+                                          className="focus:outline focus:outline-offset-2"
                                         />
                                       </div>
 
@@ -553,7 +570,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                               cpmRate: Number(e.target.value),
                                             })
                                           }
-                                          className="focus:outline-offset-2"
+                                          className="focus:outline focus:outline-offset-2"
                                         />
                                       </div>
 
@@ -576,7 +593,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                               fillRate: Number(e.target.value),
                                             })
                                           }
-                                          className="focus:outline-offset-2"
+                                          className="focus:outline focus:outline-offset-2"
                                         />
                                       </div>
 
@@ -599,7 +616,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                                               liveHours: Number(e.target.value),
                                             })
                                           }
-                                          className="focus:outline-offset-2"
+                                          className="focus:outline focus:outline-offset-2"
                                         />
                                       </div>
                                     </>
@@ -666,9 +683,9 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         value={newChannel.name}
                         onChange={(e) => setNewChannel({ ...newChannel, name: e.target.value })}
                         placeholder="Main Channel"
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
-                      {validationErrors.name && <p className="text-xs text-red-600 mt-1">{validationErrors.name}</p>}
+                      {validationErrors.name && <p className="text-xs text-red-700 mt-1">{validationErrors.name}</p>}
                     </div>
 
                     <div className="flex flex-col space-y-1">
@@ -684,10 +701,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         pattern="\d*"
                         value={newChannel.viewership}
                         onChange={(e) => setNewChannel({ ...newChannel, viewership: Number(e.target.value) })}
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
                       {validationErrors.viewership && (
-                        <p className="text-xs text-red-600 mt-1">{validationErrors.viewership}</p>
+                        <p className="text-xs text-red-700 mt-1">{validationErrors.viewership}</p>
                       )}
                     </div>
 
@@ -699,7 +716,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         value={newChannel.encodingPreset || settings.encodingPreset}
                         onValueChange={(value) => setNewChannel({ ...newChannel, encodingPreset: value })}
                       >
-                        <SelectTrigger id="encodingPreset" className="h-8 text-sm focus:outline-offset-2">
+                        <SelectTrigger id="encodingPreset" className="h-8 text-sm focus:outline focus:outline-offset-2">
                           <SelectValue placeholder="Select encoding preset" />
                         </SelectTrigger>
                         <SelectContent>
@@ -730,10 +747,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         onChange={(e) =>
                           setNewChannel({ ...newChannel, averageRetentionMinutes: Number(e.target.value) })
                         }
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
                       {validationErrors.averageRetentionMinutes && (
-                        <p className="text-xs text-red-600 mt-1">{validationErrors.averageRetentionMinutes}</p>
+                        <p className="text-xs text-red-700 mt-1">{validationErrors.averageRetentionMinutes}</p>
                       )}
                     </div>
 
@@ -750,10 +767,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         pattern="\d*"
                         value={newChannel.adSpotsPerHour}
                         onChange={(e) => setNewChannel({ ...newChannel, adSpotsPerHour: Number(e.target.value) })}
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
                       {validationErrors.adSpotsPerHour && (
-                        <p className="text-xs text-red-600 mt-1">{validationErrors.adSpotsPerHour}</p>
+                        <p className="text-xs text-red-700 mt-1">{validationErrors.adSpotsPerHour}</p>
                       )}
                     </div>
 
@@ -769,10 +786,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         inputMode="decimal"
                         value={newChannel.cpmRate}
                         onChange={(e) => setNewChannel({ ...newChannel, cpmRate: Number(e.target.value) })}
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
                       {validationErrors.cpmRate && (
-                        <p className="text-xs text-red-600 mt-1">{validationErrors.cpmRate}</p>
+                        <p className="text-xs text-red-700 mt-1">{validationErrors.cpmRate}</p>
                       )}
                     </div>
 
@@ -805,10 +822,10 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         pattern="\d*"
                         value={newChannel.liveHours}
                         onChange={(e) => setNewChannel({ ...newChannel, liveHours: Number(e.target.value) })}
-                        className="h-8 text-sm focus:outline-offset-2"
+                        className="h-8 text-sm focus:outline focus:outline-offset-2"
                       />
                       {validationErrors.liveHours && (
-                        <p className="text-xs text-red-600 mt-1">{validationErrors.liveHours}</p>
+                        <p className="text-xs text-red-700 mt-1">{validationErrors.liveHours}</p>
                       )}
                     </div>
 
@@ -821,7 +838,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                           id="channelEnabled"
                           checked={newChannel.enabled !== false}
                           onCheckedChange={(checked) => setNewChannel({ ...newChannel, enabled: checked })}
-                          className="mr-2 focus:outline-offset-2"
+                          className="mr-2 focus:outline focus:outline-offset-2"
                         />
                         <Label htmlFor="channelEnabled" className="text-xs">
                           {newChannel.enabled !== false ? "On" : "Off"}
@@ -837,7 +854,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         setValidationErrors({})
                       }}
                       size="sm"
-                      className="focus:outline-offset-2"
+                      className="focus:outline focus:outline-offset-2"
                     >
                       Cancel
                     </Button>
@@ -845,7 +862,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                       onClick={handleAddChannel}
                       size="sm"
                       disabled={hasValidationErrors}
-                      className="focus:outline-offset-2"
+                      className="focus:outline focus:outline-offset-2"
                     >
                       Add Channel
                     </Button>
@@ -874,7 +891,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                     setShowDvrSettings(checked)
                     updateSettings({ liveDvrEnabled: checked })
                   }}
-                  className="focus:outline-offset-2"
+                  className="focus:outline focus:outline-offset-2"
                 />
               </div>
 
@@ -896,7 +913,7 @@ export function LiveChannels({ settings, updateSettings, validationResults, isEd
                         value={settings.recordingStorageLocation}
                         onValueChange={(value) => updateSettings({ recordingStorageLocation: value })}
                       >
-                        <SelectTrigger id="recordingStorageLocation" className="focus:outline-offset-2">
+                        <SelectTrigger id="recordingStorageLocation" className="focus:outline focus:outline-offset-2">
                           <SelectValue placeholder="Select storage location" />
                         </SelectTrigger>
                         <SelectContent>
