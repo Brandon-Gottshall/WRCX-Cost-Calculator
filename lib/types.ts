@@ -23,6 +23,7 @@ export interface ChannelStatistics {
   vodUniques: number // NEW: "Daily VOD Viewers" – unique on-demand viewers per day
   vodWatchMin: number // NEW: "Avg VOD Watch Time (min)" – average minutes each watches VOD
   enabled?: boolean
+  encodingPreset?: string // NEW: Per-channel encoding preset
 }
 
 export interface VodStatistics {
