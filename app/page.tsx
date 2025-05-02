@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback, Suspense } from "react"
 import { SettingsCard } from "@/components/settings-card"
 import { CostBreakdown } from "@/components/cost-breakdown"
 import { CostPreview } from "@/components/cost-preview"
@@ -8,20 +8,26 @@ import { PlatformPicker } from "@/components/platform-picker"
 import { VodStatisticsManager as VodStatistics } from "@/components/vod-statistics"
 import { RevenueSettings } from "@/components/revenue-settings"
 import { RevenueKPIs as RevenueKpis } from "@/components/revenue-kpis"
-import { RevenueVsCost } from "@/components/revenue-vs-cost"
 import { SettingsTabs } from "@/components/settings-tabs"
-import { PricingAssumptions } from "@/components/pricing-assumptions"
-import ValidatedAssumptions from "@/components/validated-assumptions"
-import { CitationsList as Citations } from "@/components/citations"
 import { InfrastructureProvider } from "@/lib/store-init"
 import { initializeStore, saveStore } from "@/lib/store-init"
 import { validateSettings } from "@/lib/validation"
-import { LiveChannels } from "@/components/live-channels" // Import the new unified component
+import { LiveChannels } from "@/components/live-channels"
 import type { SettingsState, Tab, Platform, VodStatistics as VodStatsType, RevenueState } from "@/lib/types"
 import { Info } from "lucide-react"
 import { UnifiedHardwareRecommendations } from "@/components/unified-hardware-recommendations"
-import { useDebouncedCalculation } from "@/hooks/use-debounced-calculation"
 import { StickyCostContainer } from "@/components/sticky-cost-container"
+import { PerformanceProfiler } from "@/components/performance-profiler"
+import { useCostModel } from "@/hooks/use-cost-model"
+// Import dynamic components
+import {
+  DynamicRevenueVsCost,
+  DynamicAnalyticsTabContent,
+  DynamicReferenceTabContent,
+} from "@/components/dynamic-imports"
+
+// Shimmer component for loading states
+const ShimmerLoader = () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>
 
 export default function Home() {
   const [settings, setSettings] = useState<SettingsState>(
@@ -97,243 +103,265 @@ export default function Home() {
 
   const [activeTab, setActiveTab] = useState<Tab>("live")
   const [editedFields, setEditedFields] = useState<Record<string, boolean>>({})
-  const [infrastructureError, setInfrastructureError] = useState<Error | null>(null)
 
-  // Use debounced calculations
-  const { costs, revenue, isCalculating, recalculate } = useDebouncedCalculation(settings)
+  // Use our memoized cost model hook
+  const { costs, revenue } = useCostModel(settings)
 
   // Validate settings
   const validationResults = validateSettings(settings)
 
   // Update settings and save to localStorage
-  const updateSettings = (newSettings: Partial<SettingsState>) => {
-    const updatedSettings = { ...settings, ...newSettings }
-    setSettings(updatedSettings)
-    saveStore(updatedSettings)
+  const updateSettings = useCallback((newSettings: Partial<SettingsState>) => {
+    setSettings((prevSettings) => {
+      const updatedSettings = { ...prevSettings, ...newSettings }
+      saveStore(updatedSettings)
+      return updatedSettings
+    })
 
     // Track which fields have been edited
-    const newEditedFields = { ...editedFields }
-    Object.keys(newSettings).forEach((key) => {
-      newEditedFields[key] = true
+    setEditedFields((prev) => {
+      const newEditedFields = { ...prev }
+      Object.keys(newSettings).forEach((key) => {
+        newEditedFields[key] = true
+      })
+      return newEditedFields
     })
-    setEditedFields(newEditedFields)
-  }
+  }, [])
 
   // Function to update revenue settings
-  const updateRevenue = (revenueUpdates: Partial<RevenueState>) => {
-    updateSettings({
-      revenue: { ...settings.revenue, ...revenueUpdates },
-    })
-  }
+  const updateRevenue = useCallback(
+    (revenueUpdates: Partial<RevenueState>) => {
+      updateSettings({
+        revenue: { ...settings.revenue, ...revenueUpdates },
+      })
+    },
+    [settings.revenue, updateSettings],
+  )
 
   // Function to update global fill rate
-  const updateGlobalFillRate = (value: number) => {
-    updateSettings({ globalFillRate: value })
-  }
+  const updateGlobalFillRate = useCallback(
+    (value: number) => {
+      updateSettings({ globalFillRate: value })
+    },
+    [updateSettings],
+  )
 
   // Check if a field has been edited
-  const isEdited = (fieldPath: string) => {
-    return editedFields[fieldPath] === true
-  }
+  const isEdited = useCallback(
+    (fieldPath: string) => {
+      return editedFields[fieldPath] === true
+    },
+    [editedFields],
+  )
 
   // Handle platform change
-  const handlePlatformChange = (platform: Platform) => {
-    updateSettings({ platform })
-  }
+  const handlePlatformChange = useCallback(
+    (platform: Platform) => {
+      updateSettings({ platform })
+    },
+    [updateSettings],
+  )
 
   // Add a function to update VOD categories
-  const updateVodCategories = (vodCategories: VodStatsType[]) => {
-    updateSettings({ vodCategories })
-  }
+  const updateVodCategories = useCallback(
+    (vodCategories: VodStatsType[]) => {
+      updateSettings({ vodCategories })
+    },
+    [updateSettings],
+  )
 
   // Determine if we should show hardware recommendations
   const showHardwareRecommendations = settings.platform === "self-hosted" || settings.platform === "hybrid"
 
   return (
-    <InfrastructureProvider>
-      <main className="container mx-auto py-6 px-4 max-w-7xl">
-        <h1 className="text-3xl font-bold mb-6">WRCX Stream/VOD Platform Calculator</h1>
+    <PerformanceProfiler id="HomePage">
+      <InfrastructureProvider>
+        <main className="container mx-auto py-6 px-4 max-w-7xl">
+          <h1 className="text-3xl font-bold mb-6">WRCX Stream/VOD Platform Calculator</h1>
 
-        {/* Platform Picker - always visible at the top */}
-        <div className="mb-6">
-          <PlatformPicker
-            platform={settings.platform}
-            onChange={handlePlatformChange}
-            settings={settings}
-            updateSettings={updateSettings}
-          />
-        </div>
-
-        {/* Mobile-only hardware recommendations - shown after Platform Picker on small screens */}
-        {showHardwareRecommendations && (
-          <div className="lg:hidden mb-6">
-            <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+          {/* Platform Picker - always visible at the top */}
+          <div className="mb-6">
+            <PlatformPicker
+              platform={settings.platform}
+              onChange={handlePlatformChange}
+              settings={settings}
+              updateSettings={updateSettings}
+            />
           </div>
-        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - Settings */}
-          <div className="lg:col-span-2 space-y-6">
-            <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
+          {/* Mobile-only hardware recommendations - shown after Platform Picker on small screens */}
+          {showHardwareRecommendations && (
+            <div className="lg:hidden mb-6">
+              <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+            </div>
+          )}
 
-            {activeTab === "live" && (
-              <>
-                {/* Use the new unified LiveChannels component instead of separate components */}
-                <LiveChannels
-                  settings={settings}
-                  updateSettings={updateSettings}
-                  validationResults={validationResults}
-                  isEdited={isEdited}
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column - Settings */}
+            <div className="lg:col-span-2 space-y-6">
+              <SettingsTabs activeTab={activeTab} onChange={setActiveTab} settings={settings} />
 
+              {activeTab === "live" && (
+                <>
+                  <LiveChannels
+                    settings={settings}
+                    updateSettings={updateSettings}
+                    validationResults={validationResults}
+                    isEdited={isEdited}
+                  />
+
+                  <SettingsCard
+                    title="Live → VOD"
+                    description="Configure archiving live streams as VOD content"
+                    settings={settings}
+                    updateSettings={updateSettings}
+                    type="live-to-vod"
+                    validationResults={validationResults}
+                    isEdited={isEdited}
+                  />
+                </>
+              )}
+
+              {activeTab === "legacy-vod" && (
+                <>
+                  <SettingsCard
+                    title="Legacy VOD"
+                    description="Configure existing video content"
+                    settings={settings}
+                    updateSettings={updateSettings}
+                    type="legacy-vod"
+                    validationResults={validationResults}
+                    isEdited={isEdited}
+                  />
+
+                  <VodStatistics
+                    vodCategories={settings.vodCategories || []}
+                    updateVodCategories={updateVodCategories}
+                    defaultFillRate={settings.globalFillRate}
+                  />
+                </>
+              )}
+
+              {activeTab === "storage" && (
                 <SettingsCard
-                  title="Live → VOD"
-                  description="Configure archiving live streams as VOD content"
+                  title="Storage & Database"
+                  description="Configure storage and database settings"
                   settings={settings}
                   updateSettings={updateSettings}
-                  type="live-to-vod"
+                  type="storage-db"
                   validationResults={validationResults}
                   isEdited={isEdited}
                 />
-              </>
-            )}
+              )}
 
-            {activeTab === "legacy-vod" && (
-              <>
+              {activeTab === "email" && (
                 <SettingsCard
-                  title="Legacy VOD"
-                  description="Configure existing video content"
+                  title="Email"
+                  description="Configure email settings"
                   settings={settings}
                   updateSettings={updateSettings}
-                  type="legacy-vod"
+                  type="email"
                   validationResults={validationResults}
                   isEdited={isEdited}
                 />
+              )}
 
-                <VodStatistics
-                  vodCategories={settings.vodCategories || []}
-                  updateVodCategories={updateVodCategories}
-                  defaultFillRate={settings.globalFillRate}
+              {activeTab === "cdn" && (
+                <SettingsCard
+                  title="CDN"
+                  description="Configure content delivery network settings"
+                  settings={settings}
+                  updateSettings={updateSettings}
+                  type="cdn"
+                  validationResults={validationResults}
+                  isEdited={isEdited}
                 />
-              </>
-            )}
+              )}
 
-            {activeTab === "storage" && (
-              <SettingsCard
-                title="Storage & Database"
-                description="Configure storage and database settings"
-                settings={settings}
-                updateSettings={updateSettings}
-                type="storage-db"
-                validationResults={validationResults}
-                isEdited={isEdited}
-              />
-            )}
-
-            {activeTab === "email" && (
-              <SettingsCard
-                title="Email"
-                description="Configure email settings"
-                settings={settings}
-                updateSettings={updateSettings}
-                type="email"
-                validationResults={validationResults}
-                isEdited={isEdited}
-              />
-            )}
-
-            {activeTab === "cdn" && (
-              <SettingsCard
-                title="CDN"
-                description="Configure content delivery network settings"
-                settings={settings}
-                updateSettings={updateSettings}
-                type="cdn"
-                validationResults={validationResults}
-                isEdited={isEdited}
-              />
-            )}
-
-            {activeTab === "hardware" && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
-                <div className="flex items-start gap-2">
-                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div>
-                    <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Hardware Configuration</h3>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Hardware recommendations are displayed below the platform picker on mobile devices and in the
-                      right sidebar on desktop.
-                    </p>
+              {activeTab === "hardware" && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Hardware Configuration</h3>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        Hardware recommendations are displayed below the platform picker on mobile devices and in the
+                        right sidebar on desktop.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {activeTab === "analytics" && (
-              <SettingsCard
-                title="Analytics"
-                description="Configure analytics settings"
-                settings={settings}
-                updateSettings={updateSettings}
-                type="analytics"
-                validationResults={validationResults}
-                isEdited={isEdited}
-              />
-            )}
+              {activeTab === "analytics" && (
+                <Suspense fallback={<ShimmerLoader />}>
+                  <DynamicAnalyticsTabContent
+                    settings={settings}
+                    updateSettings={updateSettings}
+                    validationResults={validationResults}
+                    isEdited={isEdited}
+                  />
+                </Suspense>
+              )}
 
-            {activeTab === "revenue" && (
-              <>
-                <RevenueSettings
-                  revenue={settings.revenue}
-                  updateRevenue={updateRevenue}
-                  globalFillRate={settings.globalFillRate}
-                  updateGlobalFillRate={updateGlobalFillRate}
-                  isEdited={isEdited}
-                />
-                <RevenueKpis revenue={revenue} />
-                <RevenueVsCost revenue={revenue} costs={costs} />
-              </>
-            )}
+              {activeTab === "revenue" && (
+                <>
+                  <RevenueSettings
+                    revenue={settings.revenue}
+                    updateRevenue={updateRevenue}
+                    globalFillRate={settings.globalFillRate}
+                    updateGlobalFillRate={updateGlobalFillRate}
+                    isEdited={isEdited}
+                  />
+                  <RevenueKpis revenue={revenue} />
+                  <Suspense fallback={<ShimmerLoader />}>
+                    <DynamicRevenueVsCost revenue={revenue} costs={costs} />
+                  </Suspense>
+                </>
+              )}
 
-            {activeTab === "reference" && (
-              <>
-                <PricingAssumptions platform={settings.platform} className="mb-6" />
-                <ValidatedAssumptions settings={settings} validationResults={validationResults} className="mb-6" />
-                <Citations platform={settings.platform} />
-              </>
-            )}
-          </div>
+              {activeTab === "reference" && (
+                <Suspense fallback={<ShimmerLoader />}>
+                  <DynamicReferenceTabContent settings={settings} validationResults={validationResults} />
+                </Suspense>
+              )}
+            </div>
 
-          {/* Right column - Hardware Recommendations and Cost Preview */}
-          <div className="space-y-6">
-            {/* Hardware Recommendations - desktop only */}
-            {showHardwareRecommendations ? (
-              <div className="hidden lg:block">
-                <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
-              </div>
-            ) : (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
-                <div className="flex items-start gap-2">
-                  <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div>
-                    <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Managed Infrastructure</h3>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {settings.platform === "mux" ? "Mux" : "Cloudflare Stream"} provides fully managed infrastructure
-                      for your streaming needs. No hardware configuration is required.
-                    </p>
+            {/* Right column - Hardware Recommendations and Cost Preview */}
+            <div className="space-y-6">
+              {/* Hardware Recommendations - desktop only */}
+              {showHardwareRecommendations ? (
+                <div className="hidden lg:block">
+                  <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+                </div>
+              ) : (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-900/30">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-700 dark:text-blue-300">Managed Infrastructure</h3>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        {settings.platform === "mux" ? "Mux" : "Cloudflare Stream"} provides fully managed
+                        infrastructure for your streaming needs. No hardware configuration is required.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Cost Preview */}
-            <StickyCostContainer>
-              <CostPreview costs={costs} settings={settings} revenue={revenue} isCalculating={isCalculating} />
-              <CostBreakdown costs={costs} settings={settings} isCalculating={isCalculating} />
-            </StickyCostContainer>
+              {/* Cost Preview */}
+              <StickyCostContainer
+                settings={settings}
+                updateSettings={updateSettings}
+                showHardwareRecommendations={showHardwareRecommendations}
+              >
+                <CostPreview costs={costs} settings={settings} revenue={revenue} />
+                <CostBreakdown costs={costs} settings={settings} />
+              </StickyCostContainer>
+            </div>
           </div>
-        </div>
-      </main>
-    </InfrastructureProvider>
+        </main>
+      </InfrastructureProvider>
+    </PerformanceProfiler>
   )
 }

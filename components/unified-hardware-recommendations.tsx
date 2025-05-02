@@ -249,7 +249,7 @@ export function UnifiedHardwareRecommendations({ settings, updateSettings }: Uni
   return (
     <Card
       className={cn(
-        "border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300 order-first lg:order-none mb-6 lg:mb-0",
+        "border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300 order-first lg:order-none mb-6 lg:mb-0 z-30",
         isRelevantPlatform ? "ring-2 ring-offset-2 ring-blue-500 dark:ring-blue-400" : "",
       )}
     >

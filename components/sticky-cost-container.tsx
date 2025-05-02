@@ -6,13 +6,24 @@ import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { UnifiedHardwareRecommendations } from "@/components/unified-hardware-recommendations"
+import type { SettingsState } from "@/lib/types"
 
 interface StickyCostContainerProps {
   children: React.ReactNode
   className?: string
+  settings?: SettingsState
+  updateSettings?: (settings: Partial<SettingsState>) => void
+  showHardwareRecommendations?: boolean
 }
 
-export function StickyCostContainer({ children, className }: StickyCostContainerProps) {
+export function StickyCostContainer({
+  children,
+  className,
+  settings,
+  updateSettings,
+  showHardwareRecommendations = false,
+}: StickyCostContainerProps) {
   const [isSticky, setIsSticky] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
@@ -54,6 +65,14 @@ export function StickyCostContainer({ children, className }: StickyCostContainer
           </Button>
         </div>
       )}
+
+      {/* Show hardware recommendations when sticky and settings are available */}
+      {isSticky && showHardwareRecommendations && settings && updateSettings && (
+        <div className="mb-4">
+          <UnifiedHardwareRecommendations settings={settings} updateSettings={updateSettings} />
+        </div>
+      )}
+
       {children}
     </div>
   )
