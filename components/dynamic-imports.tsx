@@ -31,11 +31,4 @@ export const DynamicReferenceTabContent = dynamic(
   },
 )
 
-// Dynamically import the cost breakdown chart
-export const DynamicCostBreakdownChart = dynamic(
-  () => import("./cost-breakdown-chart").then((mod) => mod.CostBreakdownChart),
-  {
-    loading: () => <LoadingComponent />,
-    ssr: false,
-  },
-)
+// Remove the DynamicCostBreakdownChart import since the file doesn't exist
