@@ -2,9 +2,14 @@
 
 import dynamic from "next/dynamic"
 
+// Simple loading component
+const LoadingComponent = () => (
+  <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>
+)
+
 // Dynamically import the revenue vs cost component
 export const DynamicRevenueVsCost = dynamic(() => import("./revenue-vs-cost").then((mod) => mod.RevenueVsCost), {
-  loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>,
+  loading: () => <LoadingComponent />,
   ssr: false,
 })
 
@@ -12,7 +17,7 @@ export const DynamicRevenueVsCost = dynamic(() => import("./revenue-vs-cost").th
 export const DynamicAnalyticsTabContent = dynamic(
   () => import("./analytics-tab-content").then((mod) => mod.AnalyticsTabContent),
   {
-    loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>,
+    loading: () => <LoadingComponent />,
     ssr: false,
   },
 )
@@ -21,7 +26,7 @@ export const DynamicAnalyticsTabContent = dynamic(
 export const DynamicReferenceTabContent = dynamic(
   () => import("./reference-tab-content").then((mod) => mod.ReferenceTabContent),
   {
-    loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>,
+    loading: () => <LoadingComponent />,
     ssr: false,
   },
 )
@@ -30,7 +35,7 @@ export const DynamicReferenceTabContent = dynamic(
 export const DynamicCostBreakdownChart = dynamic(
   () => import("./cost-breakdown-chart").then((mod) => mod.CostBreakdownChart),
   {
-    loading: () => <div className="h-64 w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg"></div>,
+    loading: () => <LoadingComponent />,
     ssr: false,
   },
 )
